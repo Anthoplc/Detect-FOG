@@ -6,10 +6,12 @@ from scipy.signal import resample,butter, lfilter, freqz
 import json
 import ezc3d
 
-#Intégrer la condition if pas de FOG alors afficher 0 dans le fichier json
+# class DetectFog:
+#     def __init__(self, file_path):
+#         self.__PreProcessing__ = PreProcessing(file_path)
+#         self.__Statistics__ = Statistics(self.__PreProcessing__)
 
-
-class FOGDetector:
+class PreProcessing:
     def __init__(self, file_path):
         
         ################### Initialisation des attributs pour création JSON ###################
@@ -31,6 +33,24 @@ class FOGDetector:
         
         ################### Initialisation des attributs de normalisation ###################
         self.normalized_data = None
+        ################### Fin Initialisation des attributs de normalisation ###################
+        
+        ################### Initialisation des attributs pour découpage en fenêtres ###################
+        self.taille_fenetre = 2 # Taille de la fenêtre en secondes
+        self.decalage = 0.2 #20% de la taille de la fenêtre
+        self.taux_echantillonnage = 50    
+        self.fenetres_data = None
+        self.infos_fenetres = None    
+        ################### Fin Initialisation des attributs pour découpage en fenêtres ###################
+        
+        ################### Initialisation des attributs pour labelisation des fenêtres ###################
+        self.temps_prefog = 3
+        self.debuts_prefog = None
+        ################### Fin Initialisation des attributs pour labelisation des fenêtres ###################
+        
+        ################### Initialisation des attributs pour association labels fenetres aux datas ###################
+        self.mix_label_fenetre_data = None
+        ################### Fin Initialisation des attributs pour association labels fenetres aux datas ###################
 
 ################### Création JSON ###################
 
@@ -41,13 +61,13 @@ class FOGDetector:
         df.reset_index(drop=True, inplace=True) # Supprimer la colonne index
         self.events_dict = df.groupby('events')['frames'].apply(list).to_dict() # Créer un dictionnaire avec les événements et les temps associés
 
-    def butter_lowpass(self, cutoff, fs, order=5):
+    def butter_lowpass(self, cutoff, fs, order=2):
         nyq = 0.5 * fs # Fréquence de Nyquist
         normal_cutoff = cutoff / nyq # Fréquence de coupure normalisée
         b, a = butter(order, normal_cutoff, btype='low', analog=False) # Calculer les coefficients du filtre
         return b, a
 
-    def butter_lowpass_filter(self, data, cutoff, fs, order=5):
+    def butter_lowpass_filter(self, data, cutoff, fs, order=2):
         b, a = self.butter_lowpass(cutoff, fs, order=order) # Calculer les coefficients du filtre
         y = lfilter(b, a, data) # Appliquer le filtre
         return y
@@ -111,12 +131,12 @@ class FOGDetector:
     def creer_structure_json(self, patient_id, date_de_naissance, medicaments):
         self.json_data = {
             "metadata": {
-                "Details du patient": {
-                    "Identifiant": patient_id,
-                    "Date de naissance": date_de_naissance,
-                    "Medicaments": medicaments
+                "details du patient": {
+                    "identifiant": patient_id,
+                    "date de naissance": date_de_naissance,
+                    "medicaments": medicaments
                 },
-                "Temps": self.resampled_times.tolist()
+                "temps": self.resampled_times.tolist()
             }
         }
 
@@ -159,29 +179,29 @@ class FOGDetector:
 
         if "FOG_begin" in self.events_dict and "FOG_end" in self.events_dict: # Si les événements FOG sont présents
             self.json_data["FOG"] = {
-                "Debut": self.events_dict["FOG_begin"], 
-                "Fin": self.events_dict["FOG_end"]
+                "debut": self.events_dict["FOG_begin"], 
+                "fin": self.events_dict["FOG_end"]
             }
             del self.events_dict["FOG_begin"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
             del self.events_dict["FOG_end"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
         else: # Si les événements FOG ne sont pas présents
             self.json_data["FOG"] = {
-                "Debut": 0, 
-                "Fin": 0
+                "debut": 0, 
+                "fin": 0
             }
 
-        self.json_data["Parcours"] = self.events_dict
+        self.json_data["parcours"] = self.events_dict
 
         return self.json_data
 
-    def creation_json_grace_c3d(self, patient_id, date_de_naissance, medicaments, output_path):
+    def creation_json_grace_c3d(self, patient_id, date_de_naissance, medicaments):#, output_path):
         self.recuperer_evenements() # Récupérer les événements
         self.reechantillonnage_fc_coupure_et_association_labels_et_data() # Rééchantillonner, filtrer et associer les données
         self.filtrer_labels() # Filtrer les étiquettes pour ne garder que les données de GYRO et ACC
         self.calcul_norme() # Calculer les normes
         self.json_data = self.creer_structure_json(patient_id, date_de_naissance, medicaments) # Créer la structure JSON
-        with open(output_path, 'w') as outfile: # Ouvrir le fichier de sortie
-            json.dump(self.json_data, outfile, indent=4) # Écrire les données dans le fichier de sortie
+        #with open(output_path, 'w') as outfile: # Ouvrir le fichier de sortie
+            #json.dump(self.json_data, outfile, indent=4) # Écrire les données dans le fichier de sortie
 
 ################### Fin Création JSON ###################
 
@@ -200,8 +220,8 @@ class FOGDetector:
                 for event in events:
                     plt.axvline(x=event, color=color, linestyle=linestyle, label=label)
 
-        events_1_begin = self.json_data["FOG"].get("Debut", [])
-        events_1_end = self.json_data["FOG"].get("Fin", [])
+        events_1_begin = self.json_data["FOG"].get("debut", [])
+        events_1_end = self.json_data["FOG"].get("fin", [])
 
         data_to_plot = self.json_data[muscle][side][sensor_type][axis]
         plt.figure(figsize=(12, 6))
@@ -240,8 +260,8 @@ class FOGDetector:
         - data_interval (dict): Un dictionnaire contenant l'intervalle de données extrait.
         """
         # Extraire les temps de début et de fin du parcours
-        start_time = self.json_data["Parcours"]["START"][0] # Extraire le temps de début du parcours
-        end_time = self.json_data["Parcours"]["END"][0] # Extraire le temps de fin du parcours
+        start_time = self.json_data["parcours"]["START"][0] # Extraire le temps de début du parcours
+        end_time = self.json_data["parcours"]["END"][0] # Extraire le temps de fin du parcours
         epsilon=0.01 # Marge d'erreur
 
         # Trouver les indices correspondants dans le vecteur de temps pour le début du parcours
@@ -254,7 +274,7 @@ class FOGDetector:
         # Extraire les données d'axes pour la plage de temps START à END
         self.data_interval = {}
         for sensor, sensor_data in self.json_data.items():
-            if sensor not in ["metadata", "Parcours", "FOG"]:
+            if sensor not in ["metadata", "parcours", "FOG"]:
                 self.data_interval[sensor] = {}
                 for side, side_data in sensor_data.items():
                     self.data_interval[sensor][side] = {}
@@ -265,14 +285,14 @@ class FOGDetector:
 
         # Copier les données de "metadata", "Parcours" et "FOG"
         self.data_interval["metadata"] = self.json_data["metadata"]
-        self.data_interval["Parcours"] = self.json_data["Parcours"]
+        self.data_interval["parcours"] = self.json_data["parcours"]
         self.data_interval["FOG"] = self.json_data["FOG"]
 
         # Extraire la plage de temps START à END pour la liste de temps dans metadata
         metadata_temps_interval = self.resampled_times[start_index:end_index+1] # Extraire la plage de temps START à END
 
         # Ajouter la plage de temps interval à metadata
-        self.data_interval["metadata"]["Temps"] = metadata_temps_interval # Ajouter la plage de temps interval à metadata
+        self.data_interval["metadata"]["temps"] = metadata_temps_interval # Ajouter la plage de temps interval à metadata
 ################### Fin Conserver les données entres les évènements START et END ###################
 
 
@@ -292,12 +312,12 @@ class FOGDetector:
                 for event in events:
                     plt.axvline(x=event, color=color, linestyle=linestyle, label=label)
 
-        events_1_begin = self.data_interval["FOG"].get("Debut", [])
-        events_1_end = self.data_interval["FOG"].get("Fin", [])
+        events_1_begin = self.data_interval["FOG"].get("debut", [])
+        events_1_end = self.data_interval["FOG"].get("fin", [])
 
         data_to_plot = self.data_interval[muscle][side][sensor_type][axis]
         plt.figure(figsize=(12, 6))
-        plt.plot(self.data_interval["metadata"]["Temps"], data_to_plot)
+        plt.plot(self.data_interval["metadata"]["temps"], data_to_plot)
         title = f"{muscle} - {side} - {sensor_type} - {axis}"
 
         plot_events_vertical_lines(events_1_begin, 'green', '--', f'FOG_begin')
@@ -332,7 +352,7 @@ class FOGDetector:
         """
         self.normalized_data = {}
         for sensor, sensor_data in self.data_interval.items():
-            if sensor not in ["metadata", "Parcours", "FOG"]:
+            if sensor not in ["metadata", "parcours", "FOG"]:
                 self.normalized_data[sensor] = {}
                 for side, side_data in sensor_data.items():
                     self.normalized_data[sensor][side] = {}
@@ -349,10 +369,190 @@ class FOGDetector:
     
         # Copier les données de "metadata", "Parcours" et "FOG"
         self.normalized_data["metadata"] = self.data_interval["metadata"]
-        self.normalized_data["Parcours"] = self.data_interval["Parcours"]
+        self.normalized_data["parcours"] = self.data_interval["parcours"]
         self.normalized_data["FOG"] = self.data_interval["FOG"]
 
 ################### Fin Normaliser les données entre START et END ###################
 
 
+################### Découpage en fenêtres ###################
 
+    def decoupage_en_fenetres(self):
+        self.fenetres_data = {}
+        self.infos_fenetres = {}
+
+        for sensor, sensor_data in self.normalized_data.items():
+            if sensor not in ["metadata", "parcours", "FOG"]:
+                self.fenetres_data[sensor] = {}
+                self.infos_fenetres[sensor] = {}
+
+                for side, side_data in sensor_data.items():
+                    self.fenetres_data[sensor][side] = {}
+                    self.infos_fenetres[sensor][side] = {}
+
+                    for measure, measure_data in side_data.items():
+                        self.fenetres_data[sensor][side][measure] = {}
+                        self.infos_fenetres[sensor][side][measure] = {}
+
+                        for axis, axis_data in measure_data.items():
+                            taille_signal = len(axis_data)
+                            taille_fenetre_echantillons = int(self.taille_fenetre * self.taux_echantillonnage)
+                            decalage_fenetre = int(self.decalage * taille_fenetre_echantillons)
+
+                            fenetres = []
+                            debut = 0
+                            fin = taille_fenetre_echantillons
+                            nb_fenetres = 0
+
+                            while fin <= taille_signal:
+                                fenetre = axis_data[debut:fin]
+                                fenetres.append(fenetre)
+
+                                debut = debut + decalage_fenetre
+                                fin = fin + decalage_fenetre
+                                nb_fenetres += 1
+
+                            if debut < taille_signal:
+                                fenetre = axis_data[debut:]
+                                fenetres.append(fenetre)
+
+                            self.fenetres_data[sensor][side][measure][axis] = fenetres
+                            self.infos_fenetres[sensor][side][measure][axis] = {
+                                "nombre_fenetres": nb_fenetres,
+                                "taille_fenetre": taille_fenetre_echantillons,
+                                "decalage_fenetre": decalage_fenetre
+                            }
+
+        # Traitement des nouvelles données de temps
+        temps = self.normalized_data["metadata"]["temps"]
+        taille_signal_temps = len(temps)
+        taille_fenetre_temps = int(self.taille_fenetre * self.taux_echantillonnage)
+        decalage_fenetre_temps = int(self.decalage * taille_fenetre_temps)
+
+        fenetres_temps = []
+        debut_temps = 0
+        fin_temps = taille_fenetre_temps
+
+        while fin_temps <= taille_signal_temps:
+            fenetre_temps = temps[debut_temps:fin_temps]
+            fenetres_temps.append(fenetre_temps)
+
+            debut_temps += decalage_fenetre_temps
+            fin_temps += decalage_fenetre_temps
+
+        if debut_temps < taille_signal_temps:
+            fenetre_temps = temps[debut_temps:]
+            fenetres_temps.append(fenetre_temps)
+
+        # Copie des données de "metadata", "Parcours" et "FOG"
+        self.fenetres_data["metadata"] = self.normalized_data["metadata"]
+        self.fenetres_data["parcours"] = self.normalized_data["parcours"]
+        self.fenetres_data["FOG"] = self.normalized_data["FOG"]
+    
+        # Remplacement des anciennes données de temps par les nouvelles
+        self.fenetres_data["metadata"]["temps"] = fenetres_temps
+
+################### Fin du Découpage en fenêtres ###################
+
+
+
+################### Obtention des labels de fenêtres par rapport au temps ###################
+    def label_fenetre(self):
+        temps = self.fenetres_data["metadata"]["temps"]
+        debuts_fog = self.fenetres_data["FOG"]["debut"]
+        fins_fog = self.fenetres_data["FOG"]["fin"]
+        #debuts_prefog= debuts_fog
+        if isinstance(debuts_fog, int):
+                debuts_fog = [debuts_fog]  # Transforme l'entier en liste contenant cet entier
+        self.debuts_prefog = [max(0, x - self.temps_prefog) for x in debuts_fog]
+        
+        if isinstance(fins_fog, int):
+            fins_fog = [fins_fog]  # Transforme l'entier en liste contenant cet entier        
+        
+        status="noFOG"
+    
+        # on stock les données d'évènement dans un dataframe ordonner en fonction du temps
+        events=pd.DataFrame({'temps': debuts_fog + fins_fog + self.debuts_prefog, 
+                    'events': ["debut_fog"]*len(debuts_fog) + ["fin_fog"]*len(fins_fog) + ["preFog"]*len(self.debuts_prefog)}).sort_values('temps').reset_index(drop=True)
+
+        # On récupère si il y a un évènement de FOG ou plusieurs de présent de la FOG
+        statuses = []
+        status = "noFog"
+
+        for window in temps:
+            w_start = window[0]
+            w_end = window[-1]
+            window_events = []  # Liste pour stocker les événements de la fenêtre
+    
+            for _, row in events.iterrows():
+                if row['temps'] >= w_start and row['temps'] <= w_end:
+                    window_events.append(row['events'])  # Ajouter l'événement à la liste
+    
+            if not window_events:  # Si la liste est vide
+                window_events = [None]  # Remplir avec None
+    
+            if status == "noFog" and "preFog" in window_events:
+                status = "transitionPreFog"
+        
+            elif status == "transitionPreFog" and None in window_events:
+                status = "preFog"
+                
+            elif status == "preFog" and "debut_fog" in window_events:
+                status = "transitionFog"
+        
+            elif status == "transitionFog" and (None in window_events or ("debut_fog" in window_events and "fin_fog" in window_events)):
+                status = "fog"
+        
+            elif status == "fog" and "fin_fog" in window_events and "debut_fog" not in window_events:
+                status = "transitionNoFog"
+        
+            elif status == "transitionNoFog" and None in window_events:
+                status = "noFog"
+        
+            statuses.append(status)  # Ajouter le statut à la liste des statuts
+        
+        # on associe les labels de fenêtre dans notre data
+        self.fenetres_data["labels_fenetres"] = statuses
+        
+################### Fin de l'obtention des labels de fenêtres par rapport au temps ###################
+
+################### Debut association labels fenetres aux datas ###################
+    def association_label_fenetre_data(self):
+        self.mix_label_fenetre_data = {}
+        for sensor, sensor_data in self.fenetres_data.items():
+            if sensor not in ["metadata", "parcours", "FOG", "labels_fenetres"]:
+                self.mix_label_fenetre_data[sensor] = {}
+                for side, side_data in sensor_data.items():
+                    self.mix_label_fenetre_data[sensor][side] = {}
+
+                    for measure, measure_data in side_data.items():
+                        self.mix_label_fenetre_data[sensor][side][measure] = {}
+                    
+                        for axis, axis_data in measure_data.items():
+                            self.mix_label_fenetre_data[sensor][side][measure][axis] = {}
+                            presentWin=np.unique(self.fenetres_data["labels_fenetres"])
+                            for label in presentWin:
+                                #data_list = axis_data
+                                data_frame_axis_data= pd.DataFrame(axis_data)
+                                self.mix_label_fenetre_data[sensor][side][measure][axis][label]=data_frame_axis_data[[x==label for x in self.fenetres_data["labels_fenetres"]]]
+    
+        # Copie des données de "metadata", "Parcours" et "FOG"
+        self.mix_label_fenetre_data["metadata"] = self.fenetres_data["metadata"]
+        self.mix_label_fenetre_data["metadata"]["temps"] = pd.DataFrame(self.mix_label_fenetre_data["metadata"]["temps"])
+        self.mix_label_fenetre_data["parcours"] = self.fenetres_data["parcours"]
+        self.mix_label_fenetre_data["FOG"] = self.fenetres_data["FOG"]
+
+        self.mix_label_fenetre_data["FOG"] = {
+            "debut": self.fenetres_data["FOG"]["debut"],
+            "fin": self.fenetres_data["FOG"]["fin"],
+            "preFog": self.debuts_prefog
+    }
+################### Fin association labels fenetres aux datas ###################
+
+
+# class Statistics:
+#     def __init__(self, __PreProcessing__):
+#         self.__PreProcessing__ = __PreProcessing__
+#         pass 
+    
+    
