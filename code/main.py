@@ -6,10 +6,6 @@ from scipy.signal import resample,butter, lfilter, freqz
 import json
 import ezc3d
 
-# class DetectFog:
-#     def __init__(self, file_path):
-#         self.__PreProcessing__ = PreProcessing(file_path)
-#         self.__Statistics__ = Statistics(self.__PreProcessing__)
 
 class PreProcessing:
     def __init__(self, file_path):
@@ -51,6 +47,10 @@ class PreProcessing:
         ################### Initialisation des attributs pour association labels fenetres aux datas ###################
         self.mix_label_fenetre_data = None
         ################### Fin Initialisation des attributs pour association labels fenetres aux datas ###################
+
+        ################### Initialisation des attributs pour concaténation des labels et des données ###################
+        self.concat_data = None
+        ################### Fin Initialisation des attributs pour concaténation des labels et des données ###################
 
 ################### Création JSON ###################
 
@@ -201,6 +201,7 @@ class PreProcessing:
         self.calcul_norme() # Calculer les normes
         self.json_data = self.creer_structure_json(patient_id, date_de_naissance, medicaments) # Créer la structure JSON
         #with open(output_path, 'w') as outfile: # Ouvrir le fichier de sortie
+        return self.json_data
             #json.dump(self.json_data, outfile, indent=4) # Écrire les données dans le fichier de sortie
 
 ################### Fin Création JSON ###################
@@ -293,8 +294,8 @@ class PreProcessing:
 
         # Ajouter la plage de temps interval à metadata
         self.data_interval["metadata"]["temps"] = metadata_temps_interval # Ajouter la plage de temps interval à metadata
+        return self.data_interval
 ################### Fin Conserver les données entres les évènements START et END ###################
-
 
 
 ################### Création Visuelle pour observer les FOG avec START et END ###################
@@ -371,7 +372,7 @@ class PreProcessing:
         self.normalized_data["metadata"] = self.data_interval["metadata"]
         self.normalized_data["parcours"] = self.data_interval["parcours"]
         self.normalized_data["FOG"] = self.data_interval["FOG"]
-
+        return self.normalized_data
 ################### Fin Normaliser les données entre START et END ###################
 
 
@@ -451,6 +452,7 @@ class PreProcessing:
     
         # Remplacement des anciennes données de temps par les nouvelles
         self.fenetres_data["metadata"]["temps"] = fenetres_temps
+        return self.fenetres_data
 
 ################### Fin du Découpage en fenêtres ###################
 
@@ -480,39 +482,55 @@ class PreProcessing:
         status = "noFog"
 
         for window in temps:
-            w_start = window[0]
-            w_end = window[-1]
+            w_start = window[0] # premier terme de la fenêtre
+            w_end = window[-1] # dernier terme de la fenêtre
             window_events = []  # Liste pour stocker les événements de la fenêtre
-    
+            time=[]
+            time_pourcent = 1 
+        
             for _, row in events.iterrows():
-                if row['temps'] >= w_start and row['temps'] <= w_end:
+                if row['temps'] >= w_start and row['temps'] <= w_end: #si le temps correspondant à l'évènement se trouve entre début et fin de la fenêtre
                     window_events.append(row['events'])  # Ajouter l'événement à la liste
+                    if row['events']== "fin_fog": # si l'évènement est fin_fog
+                        time.append(row["temps"])
+                                    
+            if len(window_events)==1 and "fin_fog" in window_events: #si on oa une liste avec uniquement fin_fog
+                time_array = np.arange(w_start,w_end,1/50)
+                time_pourcent = np.sum(time_array<=time)/100
     
             if not window_events:  # Si la liste est vide
                 window_events = [None]  # Remplir avec None
     
-            if status == "noFog" and "preFog" in window_events:
-                status = "transitionPreFog"
+            # if status == "NoFog" and "preFog" in window_events:
+            #     status = "transitionPreFog"
         
-            elif status == "transitionPreFog" and None in window_events:
-                status = "preFog"
-                
-            elif status == "preFog" and "debut_fog" in window_events:
+            # elif status == "transitionPreFog" and None in window_events:
+            #     status = "preFog"
+            
+            if status == "NoFog" and "debut_fog" in window_events: # si la fenêtre contient debut_fog et son statu est NoFog
                 status = "transitionFog"
+            
+            elif status == "transitionFog" and None in window_events: #si le FOG est suffisement long pour ne pas rencontrer d'évènement après debut_Fog alors :
+                status = "Fog"
         
-            elif status == "transitionFog" and (None in window_events or ("debut_fog" in window_events and "fin_fog" in window_events)):
-                status = "fog"
+            elif "debut_fog" in window_events and "fin_fog" in window_events: #si il est petit alors la fenêtre peut comporter l'évènement de début et de fin
+                status = "Fog"
+            
+            elif status =="Fog" and ("debut_fog" in window_events and "fin_fog" in window_events): # dans le cas où des FOG sont succints, donc c'est à dire quand la fenêtre comporte fin_fog et debut du fog suivant alors :  
+                status= "transitionFog"
         
-            elif status == "fog" and "fin_fog" in window_events and "debut_fog" not in window_events:
+            elif status == "Fog" and "fin_fog" in window_events and time_pourcent <= 0.5: # si on a un FOG inférieur à 50% de la longueur de fenêtre, alors : 
+            # on s'en fiche de faire cette opération avant, car dans tous les cas on considère FOG lorsqu'il y a deux évènements dans la fenêtre et on prend pour cible transitionFog,donc que ce soit FOG ou transition ce sera dans cible. 
                 status = "transitionNoFog"
-        
+            
             elif status == "transitionNoFog" and None in window_events:
-                status = "noFog"
+                status = "NoFog"
         
             statuses.append(status)  # Ajouter le statut à la liste des statuts
         
         # on associe les labels de fenêtre dans notre data
         self.fenetres_data["labels_fenetres"] = statuses
+        return self.fenetres_data
         
 ################### Fin de l'obtention des labels de fenêtres par rapport au temps ###################
 
@@ -547,12 +565,138 @@ class PreProcessing:
             "fin": self.fenetres_data["FOG"]["fin"],
             "preFog": self.debuts_prefog
     }
+        return self.mix_label_fenetre_data
 ################### Fin association labels fenetres aux datas ###################
 
 
-# class Statistics:
-#     def __init__(self, __PreProcessing__):
-#         self.__PreProcessing__ = __PreProcessing__
-#         pass 
+
+################### Debut concaténation des labels et des données ###################
+    def concat_label_fenetre_data(self):
+        # Initialisez un dictionnaire pour stocker les données combinées
+        self.concat_data = {}
+
+        # Bouclez à travers les données pour chaque muscle, côté, capteur, axe
+        for muscle, muscle_data in self.mix_label_fenetre_data.items():
+            if muscle not in ["metadata", "parcours", "FOG"]:
+                for side, side_data in muscle_data.items():
+                    for sensor, sensor_data in side_data.items():
+                        for axis, axis_data in sensor_data.items():
+                        # Initialisez une liste pour stocker les DataFrames de chaque étiquette
+                            dfs = []
+                            # Bouclez à travers les étiquettes disponibles
+                            for label, label_data in axis_data.items():
+                                # Ajoutez une colonne 'label' pour identifier l'étiquette
+                                label_data['label'] = label
+                                # Ajoutez le DataFrame actuel à la liste
+                                dfs.append(label_data)
+                            # Concaténez les DataFrames de chaque étiquette (ou un DataFrame vide si aucune étiquette disponible)
+                            combined_df = pd.concat(dfs) if dfs else pd.DataFrame()
+                            # Réorganisez les colonnes pour mettre 'label' en première position
+                            combined_df = combined_df[['label'] + [col for col in combined_df.columns if col != 'label']]
+                            # Stockez le DataFrame combiné dans le dictionnaire
+                            if muscle not in self.concat_data:
+                                self.concat_data[muscle] = {}
+                            if side not in self.concat_data[muscle]:
+                                self.concat_data[muscle][side] = {}
+                            if sensor not in self.concat_data[muscle][side]:
+                                self.concat_data[muscle][side][sensor] = {}
+                            self.concat_data[muscle][side][sensor][axis] = combined_df
+                            
+        # Copie des données de "metadata", "Parcours" et "FOG"
+        self.concat_data["metadata"] = self.mix_label_fenetre_data["metadata"]
+        self.concat_data["parcours"] = self.mix_label_fenetre_data["parcours"]
+        self.concat_data["FOG"] = self.mix_label_fenetre_data["FOG"]
+
+        return self.concat_data
+################### Fin concaténation des labels et des données ###################
     
+    def plot_data_FOG_start_end_final(self, muscle, side, sensor_type, axis,label, window_index):
+        """
+        Cette fonction permet de comparer les événements de FOG renseignés entre deux neurologues sur un signal donné.
+        Args:
+            time (array_like): Vecteur de temps.
+            signal (array_like): Signal à tracer.
+            fog_events_1 (dict): Dictionnaire contenant les instants des événements FOG évalués par le premier neurologue.
+            fog_events_2 (dict): Dictionnaire contenant les instants des événements FOG pour le deuxième neurologue.
+        """
+        def plot_events_vertical_lines(events, color, linestyle, label):
+            if isinstance(events, list):  # Vérifier si events est une liste
+                for event in events:
+                    plt.axvline(x=event, color=color, linestyle=linestyle, label=label)
+
+        events_1_begin = self.mix_label_fenetre_data["FOG"].get("debut", [])
+        events_1_end = self.mix_label_fenetre_data["FOG"].get("fin", [])
+
+        data_to_plot = self.mix_label_fenetre_data[muscle][side][sensor_type][axis][label][window_index]
+        plt.figure(figsize=(12, 6))
+        plt.plot(self.mix_label_fenetre_data["metadata"]["temps"][window_index], data_to_plot)
+        title = f"{muscle} - {side} - {sensor_type} - {axis} - {label} - {window_index}"
+
+        plot_events_vertical_lines(events_1_begin, 'green', '--', f'FOG_begin')
+        plot_events_vertical_lines(events_1_end, 'red', '--', f'FOG_end')
+
+        plt.xlabel('Temps (s)')
+        plt.ylabel('')
+        plt.title(title)
+        handles, labels = plt.gca().get_legend_handles_labels()
+        unique_labels = []
+        unique_handles = []
+        for i, label in enumerate(labels):
+            if label not in unique_labels:
+                unique_labels.append(label)
+                unique_handles.append(handles[i])
+        plt.legend(unique_handles, unique_labels)
+        plt.tight_layout()
+        plt.show()
+
+
+class Statistics:
+    def __init__(self, concat_data):
+        self.concat_data = concat_data
+        self.taille_fenetre = 2 # Taille de la fenêtre en secondes
+        
+    def stats(self):
+        # On calcul la durée totale de l'enregistrement
+        first_time= self.concat_data["metadata"]["temps"].iloc[0,0] # on récupère la première donnée
+        
+        if np.isnan(self.concat_data["metadata"]["temps"].iloc[-1,-1]):
+            first_na = np.where(np.isnan(self.concat_data["metadata"]["temps"]))[-1][0]
+            last_time = self.concat_data["metadata"]["temps"].iloc[-1,(first_na-1)]
+        else:
+            last_time = self.concat_data["metadata"]["temps"].iloc[-1,-1]
+        
+        
+        
+        temps_total = last_time - first_time
+        print("Temps total de l'enregistrement :", temps_total, "secondes")
+
+        # On calcul le nombre de FOG et le pourcentage de FOG sur la totalité de l'enregistrement
+        if  self.concat_data["FOG"]["debut"] == [0] : #si on a pas de FOG, nous sommes censé avoir une liste avec un seul élément qui est 0
+            nb_fog = 0
+            print(f"Nombre de FOG : {nb_fog}")
+        else :
+            nb_fog = len(self.concat_data["FOG"]["debut"])
+            print(f"Nombre de FOG : {nb_fog}")
+
+        temps_fog = sum([fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])])
+        prct_fog = (temps_fog / temps_total) * 100
+        print(f"Pourcentage total de FOG sur la totalité de l'enregistrement : {prct_fog:.2f}%")
+        
+        
+        nb_fenetre = len(self.concat_data["metadata"]["temps"])
+        nb_colonne = len(self.concat_data["metadata"]["temps"].columns)
+        
+        tab_stat = pd.DataFrame({"Temps total de l'enregistrement": [temps_total], 
+                                 "Nombre de FOG": [nb_fog], 
+                                 "Pourcentage total de FOG": [prct_fog],
+                                 "Temps de chaque fenêtre" : [self.taille_fenetre], 
+                                 "nombre de fenêtres": [nb_fenetre], 
+                                 "longueur des fenêtres": [nb_colonne]})
+        
+        temps_fog = [fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])]
+        
+        tab_fog = pd.DataFrame({"Debut": self.concat_data["FOG"]["debut"], 
+                                "Fin": self.concat_data["FOG"]["fin"], 
+                                "Total" : temps_fog})
+        return tab_stat, tab_fog
     
