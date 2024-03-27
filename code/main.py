@@ -463,19 +463,17 @@ class PreProcessing:
         temps = self.fenetres_data["metadata"]["temps"]
         debuts_fog = self.fenetres_data["FOG"]["debut"]
         fins_fog = self.fenetres_data["FOG"]["fin"]
-        #debuts_prefog= debuts_fog
-        if isinstance(debuts_fog, int):
-                debuts_fog = [debuts_fog]  # Transforme l'entier en liste contenant cet entier
-        self.debuts_prefog = [max(0, x - self.temps_prefog) for x in debuts_fog]
+        # debuts_prefog= debuts_fog
+        # if isinstance(debuts_fog, int):
+        #         debuts_fog = [debuts_fog]  # Transforme l'entier en liste contenant cet entier
+        # self.debuts_prefog = [max(0, x - self.temps_prefog) for x in debuts_fog]
         
         if isinstance(fins_fog, int):
             fins_fog = [fins_fog]  # Transforme l'entier en liste contenant cet entier        
-        
-        status="noFOG"
     
         # on stock les données d'évènement dans un dataframe ordonner en fonction du temps
-        events=pd.DataFrame({'temps': debuts_fog + fins_fog + self.debuts_prefog, 
-                    'events': ["debut_fog"]*len(debuts_fog) + ["fin_fog"]*len(fins_fog) + ["preFog"]*len(self.debuts_prefog)}).sort_values('temps').reset_index(drop=True)
+        events=pd.DataFrame({'temps': debuts_fog + fins_fog, #+ self.debuts_prefog, 
+                    'events': ["debut_fog"]*len(debuts_fog) + ["fin_fog"]*len(fins_fog)}).sort_values('temps').reset_index(drop=True)
 
         # On récupère si il y a un évènement de FOG ou plusieurs de présent de la FOG
         statuses = []
@@ -507,24 +505,24 @@ class PreProcessing:
             # elif status == "transitionPreFog" and None in window_events:
             #     status = "preFog"
             
-            if status == "NoFog" and "debut_fog" in window_events: # si la fenêtre contient debut_fog et son statu est NoFog
+            if status == "noFog" and "debut_fog" in window_events: # si la fenêtre contient debut_fog et son statut est NoFog
                 status = "transitionFog"
             
             elif status == "transitionFog" and None in window_events: #si le FOG est suffisement long pour ne pas rencontrer d'évènement après debut_Fog alors :
-                status = "Fog"
+                status = "fog"
         
             elif "debut_fog" in window_events and "fin_fog" in window_events: #si il est petit alors la fenêtre peut comporter l'évènement de début et de fin
-                status = "Fog"
+                status = "fog"
             
-            elif status =="Fog" and ("debut_fog" in window_events and "fin_fog" in window_events): # dans le cas où des FOG sont succints, donc c'est à dire quand la fenêtre comporte fin_fog et debut du fog suivant alors :  
+            elif status =="fog" and ("debut_fog" in window_events and "fin_fog" in window_events): # dans le cas où des FOG sont succints, donc c'est à dire quand la fenêtre comporte fin_fog et debut du fog suivant alors :  
                 status= "transitionFog"
         
-            elif status == "Fog" and "fin_fog" in window_events and time_pourcent <= 0.5: # si on a un FOG inférieur à 50% de la longueur de fenêtre, alors : 
+            elif status == "fog" and "fin_fog" in window_events and time_pourcent <= 0.5: # si on a un FOG inférieur à 50% de la longueur de fenêtre, alors : 
             # on s'en fiche de faire cette opération avant, car dans tous les cas on considère FOG lorsqu'il y a deux évènements dans la fenêtre et on prend pour cible transitionFog,donc que ce soit FOG ou transition ce sera dans cible. 
                 status = "transitionNoFog"
             
             elif status == "transitionNoFog" and None in window_events:
-                status = "NoFog"
+                status = "noFog"
         
             statuses.append(status)  # Ajouter le statut à la liste des statuts
         
@@ -563,7 +561,7 @@ class PreProcessing:
         self.mix_label_fenetre_data["FOG"] = {
             "debut": self.fenetres_data["FOG"]["debut"],
             "fin": self.fenetres_data["FOG"]["fin"],
-            "preFog": self.debuts_prefog
+            #"preFog": self.debuts_prefog
     }
         return self.mix_label_fenetre_data
 ################### Fin association labels fenetres aux datas ###################
@@ -600,8 +598,8 @@ class PreProcessing:
                                 self.concat_data[muscle][side] = {}
                             if sensor not in self.concat_data[muscle][side]:
                                 self.concat_data[muscle][side][sensor] = {}
-                            self.concat_data[muscle][side][sensor][axis] = combined_df
-                            
+                            self.concat_data[muscle][side][sensor][axis] = combined_df.sort_index()  # Réorganiser les lignes dans l'ordre croissant des index
+        
         # Copie des données de "metadata", "Parcours" et "FOG"
         self.concat_data["metadata"] = self.mix_label_fenetre_data["metadata"]
         self.concat_data["parcours"] = self.mix_label_fenetre_data["parcours"]
