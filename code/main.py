@@ -55,6 +55,18 @@ class PreProcessing:
 ################### Création JSON ###################
 
     def recuperer_evenements(self):
+        """
+    Fonction pour récupérer les événements à partir des données C3D.
+
+    Explications :
+    - events : Liste des noms des événements.
+    - temps_events : Liste des temps associés à chaque événement.
+    - df : DataFrame contenant les événements et leurs temps.
+    - events_dict : Dictionnaire associant chaque événement à ses temps.
+
+    Retour :
+    - Aucun, mais met à jour l'attribut events_dict de l'instance.
+        """
         events = self.c3d['parameters']['EVENT']['LABELS']['value'] # Récupérer les événements
         temps_events = self.c3d['parameters']['EVENT']['TIMES']['value'] # Récupérer les temps des événements
         df = pd.DataFrame({'events': events, 'frames': temps_events[1]}) # Créer un dataframe avec les événements et les temps
@@ -62,17 +74,66 @@ class PreProcessing:
         self.events_dict = df.groupby('events')['frames'].apply(list).to_dict() # Créer un dictionnaire avec les événements et les temps associés
 
     def butter_lowpass(self, cutoff, fs, order=2):
+        """
+    Fonction pour calculer les coefficients du filtre passe-bas Butterworth.
+
+    Args :
+    - cutoff : Fréquence de coupure du filtre.
+    - fs : Fréquence d'échantillonnage.
+    - order : Ordre du filtre Butterworth.
+
+    Retour :
+    - b : Coefficients du numérateur du filtre.
+    - a : Coefficients du dénominateur du filtre.
+        """
+        
         nyq = 0.5 * fs # Fréquence de Nyquist
         normal_cutoff = cutoff / nyq # Fréquence de coupure normalisée
         b, a = butter(order, normal_cutoff, btype='low', analog=False) # Calculer les coefficients du filtre
         return b, a
 
     def butter_lowpass_filter(self, data, cutoff, fs, order=2):
+        """
+    Fonction pour appliquer un filtre passe-bas Butterworth à des données.
+
+    Args :
+    - data : Données à filtrer.
+    - cutoff : Fréquence de coupure du filtre.
+    - fs : Fréquence d'échantillonnage.
+    - order : Ordre du filtre Butterworth.
+
+    Retour :
+    - y : Données filtrées.
+        """
+        
+        
         b, a = self.butter_lowpass(cutoff, fs, order=order) # Calculer les coefficients du filtre
         y = lfilter(b, a, data) # Appliquer le filtre
         return y
 
     def reechantillonnage_fc_coupure_et_association_labels_et_data(self, cutoff_freq=20, target_freq=50):
+        """
+    Fonction pour rééchantillonner les données à une fréquence de 50Hz, auxquelles appliquer un filtre passe-bas Butterworth de 20 Hz
+    et finir par associer les labels aux données.
+
+    Args :
+    - cutoff_freq : Fréquence de coupure du filtre.
+    - target_freq : Fréquence cible après rééchantillonnage.
+
+    Explications :
+    - labels : Liste des noms des étiquettes.
+    - original_freq : Fréquence d'échantillonnage originale.
+    - data : Données analogiques.
+    - nb_frame : Nombre de frames.
+    - nb_samples_target : Nombre d'échantillons cible après rééchantillonnage.
+    - resampled_times : Temps rééchantillonné.
+    - resampled_data : Données rééchantillonnées.
+    - fusion_label_data : Dictionnaire associant chaque étiquette à ses données.
+
+    Retour :
+    - Aucun, mais met à jour les attributs resampled_times et filtered_fusion_label_data de l'instance.
+        """
+        
         labels = self.c3d['parameters']['ANALOG']['LABELS']['value']
         original_freq = self.c3d['parameters']['ANALOG']['RATE']['value'][0]
         data = self.c3d['data']['analogs']
@@ -94,6 +155,18 @@ class PreProcessing:
             self.filtered_fusion_label_data[label] = filtered_signal  # Stocker le signal filtré dans le dictionnaire de données filtrées
 
     def filtrer_labels(self):
+        """
+    Fonction pour filtrer les étiquettes et garder uniquement les données de GYRO et ACC.
+
+    Explications :
+    - labels_filtre : Liste des étiquettes filtrées.
+    - labels_data_filtre : Dictionnaire associant chaque étiquette à ses données filtrées.
+
+    Retour :
+    - Aucun, mais met à jour les attributs labels_filtre et labels_data_filtre de l'instance.
+        """
+        
+        
         self.labels_filtre = []
         self.labels_data_filtre = {} #avec uniquement les données de GYRO et ACC excluant MAG
         for label, valeurs in self.filtered_fusion_label_data.items(): # Itérer sur chaque étiquette et signal
@@ -101,6 +174,16 @@ class PreProcessing:
                 self.labels_data_filtre[label] = valeurs
 
     def calcul_norme(self):
+        """
+    Fonction pour calculer les normes des données de GYRO et ACC.
+
+    Explications :
+    - normes : Dictionnaire associant chaque norme calculée à son étiquette correspondante.
+
+    Retour :
+    - Aucun, mais met à jour l'attribut normes de l'instance.
+        """
+        
         self.normes = {}
         traite = set()
         for key, value in self.labels_data_filtre.items(): 
@@ -129,6 +212,20 @@ class PreProcessing:
                     self.normes[nom_cle] = norme
 
     def creer_structure_json(self, patient_id, date_de_naissance, medicaments):
+        """
+        Fonction pour créer une structure JSON à partir des données.
+
+        Args :
+        - patient_id : Identifiant du patient.
+        - date_de_naissance : Date de naissance du patient.
+        - medicaments : Liste des médicaments du patient.
+
+        Explications :
+        - json_data : Dictionnaire contenant les données dans le format JSON.
+
+        Retour :
+        - json_data : Dictionnaire JSON contenant les données du patient.
+        """
         self.json_data = {
             "metadata": {
                 "details du patient": {
@@ -195,6 +292,22 @@ class PreProcessing:
         return self.json_data
 
     def creation_json_grace_c3d(self, patient_id, date_de_naissance, medicaments):#, output_path):
+        """
+        Fonction principale pour créer un fichier JSON à partir des données C3D.
+
+        Args :
+        - patient_id : Identifiant du patient.
+        - date_de_naissance : Date de naissance du patient.
+        - medicaments : Liste des médicaments du patient.
+
+        Explications :
+        - json_data : Dictionnaire JSON contenant les données de toutes les centrales inertielles portées
+        par le patient.
+
+        Retour :
+        - json_data : Dictionnaire JSON contenant les données du patient.
+        """
+        
         self.recuperer_evenements() # Récupérer les événements
         self.reechantillonnage_fc_coupure_et_association_labels_et_data() # Rééchantillonner, filtrer et associer les données
         self.filtrer_labels() # Filtrer les étiquettes pour ne garder que les données de GYRO et ACC
@@ -343,7 +456,9 @@ class PreProcessing:
 ################### Normaliser les données entre START et END ###################
     def normalize_data(self):
         """
-        Normalise les données des capteurs.
+        Normalise les données des capteurs entre le début de la phase debout (START)
+        et la fin de la phase debout (END). Ainsi, on ne prend pas les données, lorsque le patient est assis
+        ou en transition debout/assis ou assis/debout.
 
         Parameters:
         - data (dict): Un dictionnaire contenant les données des capteurs.
@@ -379,11 +494,23 @@ class PreProcessing:
 ################### Découpage en fenêtres ###################
 
     def decoupage_en_fenetres(self):
-        self.fenetres_data = {}
-        self.infos_fenetres = {}
+        """
+    Fonction pour découper les données en fenêtres d'un certains temps avec un chevauchement de 80%.
+
+    Explications :
+    - fenetres_data : Dictionnaire contenant les données découpées en fenêtres.
+    - infos_fenetres : Dictionnaire contenant des informations sur chaque fenêtre découpée.
+
+    Retour :
+    - fenetres_data : Dictionnaire contenant les données découpées en fenêtres.
+    - infos_fenetres : Dictionnaire contenant des informations sur chaque fenêtre découpée.
+        """
+        
+        self.fenetres_data = {} # Initialiser un dictionnaire pour stocker les données découpées en fenêtres
+        self.infos_fenetres = {} # Initialiser un dictionnaire pour stocker des informations sur chaque fenêtre découpée
 
         for sensor, sensor_data in self.normalized_data.items():
-            if sensor not in ["metadata", "parcours", "FOG"]:
+            if sensor not in ["metadata", "parcours", "FOG"]: # Si le capteur n'est pas "metadata", "Parcours" ou "FOG"
                 self.fenetres_data[sensor] = {}
                 self.infos_fenetres[sensor] = {}
 
@@ -396,23 +523,25 @@ class PreProcessing:
                         self.infos_fenetres[sensor][side][measure] = {}
 
                         for axis, axis_data in measure_data.items():
-                            taille_signal = len(axis_data)
-                            taille_fenetre_echantillons = int(self.taille_fenetre * self.taux_echantillonnage)
-                            decalage_fenetre = int(self.decalage * taille_fenetre_echantillons)
+                            taille_signal = len(axis_data) # Taille du signal
+                            taille_fenetre_echantillons = int(self.taille_fenetre * self.taux_echantillonnage) # Taille de la fenêtre en échantillons
+                            decalage_fenetre = int(self.decalage * taille_fenetre_echantillons) # Décalage de la fenêtre
 
                             fenetres = []
                             debut = 0
                             fin = taille_fenetre_echantillons
                             nb_fenetres = 0
-
-                            while fin <= taille_signal:
-                                fenetre = axis_data[debut:fin]
+                            
+                            # Découpage des données en fenêtres avec décalage
+                            while fin <= taille_signal: # Tant que la fin de la fenêtre est inférieure à la taille du signal
+                                fenetre = axis_data[debut:fin] 
                                 fenetres.append(fenetre)
 
-                                debut = debut + decalage_fenetre
+                                debut = debut + decalage_fenetre 
                                 fin = fin + decalage_fenetre
                                 nb_fenetres += 1
 
+                            # Ajout de la dernière fenêtre si la taille ne correspond pas exactement
                             if debut < taille_signal:
                                 fenetre = axis_data[debut:]
                                 fenetres.append(fenetre)
@@ -460,6 +589,22 @@ class PreProcessing:
 
 ################### Obtention des labels de fenêtres par rapport au temps ###################
     def label_fenetre(self):
+        """
+    Fonction pour étiqueter chaque fenêtre en fonction des événements de début et de fin de FOG.
+    Ainsi, si une fenêtre contient un événement de début de FOG, elle sera étiquetée comme "transitionFog" ou "fog" si elle contient un événement de fin de FOG.
+    Ensuite, si une fenêtre contient un événement de début de FOG et un événement de fin de FOG, elle sera étiquetée comme "fog".
+    De plus, si une fenêtre contient un évènement fin de FOG et que le FOG est inférieur à 50% de la longueur de la fenêtre, elle sera étiquetée comme "transitionNoFog".
+    Enfin, si une fenêtre ne contient aucun événement de FOG, elle sera étiquetée comme "noFog".
+    
+    Explications :
+    - temps : Liste des temps de début et de fin des fenêtres.
+    - debuts_fog : Liste des temps de début de FOG.
+    - fins_fog : Liste des temps de fin de FOG.
+
+    Retour :
+    - fenetres_data : Dictionnaire contenant les données découpées en fenêtres avec les labels associés.
+        """
+
         temps = self.fenetres_data["metadata"]["temps"]
         debuts_fog = self.fenetres_data["FOG"]["debut"]
         fins_fog = self.fenetres_data["FOG"]["fin"]
@@ -468,6 +613,7 @@ class PreProcessing:
         #         debuts_fog = [debuts_fog]  # Transforme l'entier en liste contenant cet entier
         # self.debuts_prefog = [max(0, x - self.temps_prefog) for x in debuts_fog]
         
+        # Transformation des entiers en listes s'ils ne sont pas déjà sous forme de liste
         if isinstance(fins_fog, int):
             fins_fog = [fins_fog]  # Transforme l'entier en liste contenant cet entier        
     
@@ -485,7 +631,8 @@ class PreProcessing:
             window_events = []  # Liste pour stocker les événements de la fenêtre
             time=[]
             time_pourcent = 1 
-        
+            
+            # Parcours des événements pour vérifier s'ils se trouvent dans la fenêtre
             for _, row in events.iterrows():
                 if row['temps'] >= w_start and row['temps'] <= w_end: #si le temps correspondant à l'évènement se trouve entre début et fin de la fenêtre
                     window_events.append(row['events'])  # Ajouter l'événement à la liste
@@ -493,8 +640,8 @@ class PreProcessing:
                         time.append(row["temps"])
                                     
             if len(window_events)==1 and "fin_fog" in window_events: #si on oa une liste avec uniquement fin_fog
-                time_array = np.arange(w_start,w_end,1/50)
-                time_pourcent = np.sum(time_array<=time)/100
+                time_array = np.arange(w_start,w_end,1/50) # on crée un vecteur de temps pour la fenêtre
+                time_pourcent = np.sum(time_array<=time)/100 # on calcule le pourcentage de temps de FOG dans la fenêtre
     
             if not window_events:  # Si la liste est vide
                 window_events = [None]  # Remplir avec None
@@ -534,6 +681,14 @@ class PreProcessing:
 
 ################### Debut association labels fenetres aux datas ###################
     def association_label_fenetre_data(self):
+        """
+    Grâce au temps, nous avons obtenus labels de chacune des fenêtres. Il suffit juste 
+    d'associer les labels aux données de chaque fenêtre. Cependant, pour extraire les données associées à chaque labels,
+    il est nécessaire de citer des labels uniquent et nous n'avons pas la possibilité d'avoir un Dataframe avec tous les labels.
+
+    Retour :
+    - mix_label_fenetre_data : Data.frame contenant les données de chaque fenêtre associées à leur label.
+        """
         self.mix_label_fenetre_data = {}
         for sensor, sensor_data in self.fenetres_data.items():
             if sensor not in ["metadata", "parcours", "FOG", "labels_fenetres"]:
@@ -570,6 +725,14 @@ class PreProcessing:
 
 ################### Debut concaténation des labels et des données ###################
     def concat_label_fenetre_data(self):
+        """
+    Fonction pour concaténer les données de chaque label de fenêtre. Pour chaque capteur, côté, muscle et axe, avec une colonne supplémentaire pour identifier l'étiquette et qui
+    permets d'avoir tous les labels dans un seul Dataframe et ne pas avoir à citer dans le JSON
+    [muscle][côté][capteur][axe][label], mais uniquement [muscle][côté][capteur][axe]
+    
+    Retour :
+    - concat_data : Dataframe contenant les données concaténées de chaque fenêtre pour chaque capteur, côté, muscle et axe.
+        """
         # Initialisez un dictionnaire pour stocker les données combinées
         self.concat_data = {}
 
