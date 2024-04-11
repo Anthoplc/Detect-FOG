@@ -17,6 +17,7 @@ class PreProcessing:
         self.resampled_times = None # Temps rééchantillonné
         self.filtered_fusion_label_data = None # Données filtrées
         self.labels_data_filtre = None  # Données filtrées avec uniquement les données de GYRO et ACC excluant MAG
+        self.labels_data_filtre_modifies = None # Données filtrées avec ajout d'un côté avec pelvis
         self.normes = None
         self.json_data = None
         ################### Fin Initialisation des attributs pour création JSON ###################
@@ -172,59 +173,163 @@ class PreProcessing:
         for label, valeurs in self.filtered_fusion_label_data.items(): # Itérer sur chaque étiquette et signal
             if 'ACC' in label or 'GYRO' in label: # Si l'étiquette contient 'ACC' ou 'GYRO'
                 self.labels_data_filtre[label] = valeurs
+                
+                
+    def modifier_label_pelvis(self):
+        """
+        Modifie les étiquettes pour le capteur 'pelvis', ajoutant 'Left_' devant 'Pelvis'.
+
+        Args:
+            labels_data_filtre (dict): Dictionnaire contenant les étiquettes et les données associées.
+
+        Returns:
+            dict: Un dictionnaire avec les étiquettes modifiées.
+        """
+        self.labels_data_filtre_modifies = {}
+        for key, value in self.labels_data_filtre.items():
+            parts = key.split('_')
+            if parts[0].lower() == "pelvis":  # Vérifier si l'étiquette commence par 'pelvis'
+                # Reconstruire l'étiquette avec 'Left_' ajouté
+                new_key = '_'.join(["Left"] + parts)
+                self.labels_data_filtre_modifies[new_key] = value
+            else:
+                self.labels_data_filtre_modifies[key] = value
+
+        return self.labels_data_filtre_modifies
+    
 
     def calcul_norme(self):
         """
-    Fonction pour calculer les normes des données de GYRO et ACC.
+        Cette fonction calcule les normes des données filtrées.
 
-    Explications :
-    - normes : Dictionnaire associant chaque norme calculée à son étiquette correspondante.
+        Args:
+            labels_data_filtre (dict): Dictionnaire contenant les étiquettes et les données associées, filtrées.
 
-    Retour :
-    - Aucun, mais met à jour l'attribut normes de l'instance.
+        Returns:
+            dict: Un dictionnaire contenant les normes calculées.
         """
-        
         self.normes = {}
-        traite = set()
-        for key, value in self.labels_data_filtre.items(): 
-            parts = key.split('_')  # Diviser l'étiquette en parties
-            sensor = parts[0]  # Muscle
-            side = parts[1] # Côté
-            measure = parts[2] # ACC ou GYRO
+        traite = set() # Créer un ensemble vide pour stocker les capteurs, les côtés et les mesures déjà traités
+        for key, value in self.labels_data_filtre_modifies.items():
+            parts = key.split('_') # Séparer l'étiquette en parties
+            sensor = parts[1] # Récupérer le capteur
+            side = parts[0] # Récupérer le côté
+            measure = parts[2] # Récupérer la mesure (GYRO ou ACC)
+        
+            if (side, sensor, measure) not in traite: # Si le capteur, le côté et la mesure n'ont pas déjà été traités
+                traite.add((side, sensor, measure)) # Ajouter le capteur, le côté et la mesure à l'ensemble des éléments traités
             
-            if (sensor, side, measure) not in traite: # Si le muscle, le côté et measure n'ont pas été traités
-                traite.add((sensor, side, measure)) # Ajouter le muscle, le côté et measure à l'ensemble traite
-                if "ACC" in measure:
-                    axe_X = (self.labels_data_filtre[f'{sensor}_{side}_{measure}_X'])
-                    axe_Y = (self.labels_data_filtre[f'{sensor}_{side}_{measure}_Y'])
-                    axe_Z = (self.labels_data_filtre[f'{sensor}_{side}_{measure}_Z'])
+                # if "ACC" in measure:
+                    # Obtention des axes X, Y et Z
+                axe_X = (self.labels_data_filtre_modifies[f'{side}_{sensor}_{measure}_X'])
+                axe_Y = (self.labels_data_filtre_modifies[f'{side}_{sensor}_{measure}_Y'])
+                axe_Z = (self.labels_data_filtre_modifies[f'{side}_{sensor}_{measure}_Z'])
+            
+                norme = np.sqrt(axe_X**2 + axe_Y**2 + axe_Z**2) # Calcul de la norme auquelle on soustrait 1 pour enlever la gravité
+                nom_cle = f'{side}_{sensor}_{measure}_norme'
+                self.normes[nom_cle] = norme
 
-                    norme = np.sqrt(axe_X**2 + axe_Y**2 + axe_Z**2) - 1 # Calculer la norme en soustrayant 1 pour enlever la gravité
-                    nom_cle = f'{sensor}_{side}_{measure}_norme'  # Créer le nom de la clé
-                    self.normes[nom_cle] = norme # Stocker la norme dans le dictionnaire normes
-                else: # Si measure est GYRO
-                    axe_X = self.labels_data_filtre[f'{sensor}_{side}_{measure}_X']
-                    axe_Y = self.labels_data_filtre[f'{sensor}_{side}_{measure}_Y']
-                    axe_Z = self.labels_data_filtre[f'{sensor}_{side}_{measure}_Z']
+        return self.normes
 
-                    norme = np.sqrt(axe_X**2 + axe_Y**2 + axe_Z**2)
-                    nom_cle = f'{sensor}_{side}_{measure}_norme'
-                    self.normes[nom_cle] = norme
 
+
+    # def creer_structure_json(self, patient_id, date_de_naissance, medicaments):
+    #     """
+    #     Fonction pour créer une structure JSON à partir des données.
+
+    #     Args :
+    #     - patient_id : Identifiant du patient.
+    #     - date_de_naissance : Date de naissance du patient.
+    #     - medicaments : Liste des médicaments du patient.
+
+    #     Explications :
+    #     - json_data : Dictionnaire contenant les données dans le format JSON.
+
+    #     Retour :
+    #     - json_data : Dictionnaire JSON contenant les données du patient.
+    #     """
+    #     self.json_data = {
+    #         "metadata": {
+    #             "details du patient": {
+    #                 "identifiant": patient_id,
+    #                 "date de naissance": date_de_naissance,
+    #                 "medicaments": medicaments
+    #             },
+    #             "temps": self.resampled_times.tolist()
+    #         }
+    #     }
+
+    #     for key, value in self.labels_data_filtre_modifies.items():
+    #         parts = key.split('_')
+    #         sensor = parts[1]
+    #         side = parts[0]
+    #         measure = parts[2]
+    #         axis = parts[3]
+
+    #         if sensor not in self.json_data:
+    #             self.json_data[sensor] = {}
+
+    #         if side not in self.json_data[sensor]:
+    #             self.json_data[sensor][side] = {}
+
+    #         if measure not in self.json_data[sensor][side]:
+    #             self.json_data[sensor][side][measure] = {}
+
+    #         self.json_data[sensor][side][measure][axis] = value.tolist()
+
+    #     for key in self.normes:
+    #         parts = key.split('_')
+    #         sensor = parts[1]
+    #         side = parts[0]
+    #         measure = parts[2]
+    #         axis = parts[3]
+
+    #         if sensor not in self.json_data:
+    #             self.json_data[sensor] = {}
+
+    #         if side not in self.json_data[sensor]:
+    #             self.json_data[sensor][side] = {}
+
+    #         if measure not in self.json_data[sensor][side]:
+    #             self.json_data[sensor][side][measure] = {}
+
+    #         self.json_data[sensor][side][measure][axis] = value.tolist()
+    #         self.json_data[sensor][side][measure]["norme"] = self.normes[key].tolist()
+
+    #     if "FOG_begin" in self.events_dict and "FOG_end" in self.events_dict: # Si les événements FOG sont présents
+    #         self.json_data["FOG"] = {
+    #             "debut": self.events_dict["FOG_begin"], 
+    #             "fin": self.events_dict["FOG_end"]
+    #         }
+    #         del self.events_dict["FOG_begin"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
+    #         del self.events_dict["FOG_end"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
+    #     else: # Si les événements FOG ne sont pas présents
+    #         self.json_data["FOG"] = {
+    #             "debut": 0, 
+    #             "fin": 0
+    #         }
+
+    #     self.json_data["parcours"] = self.events_dict
+
+    #     return self.json_data
+    
+    
+    
     def creer_structure_json(self, patient_id, date_de_naissance, medicaments):
         """
-        Fonction pour créer une structure JSON à partir des données.
+        Cette fonction crée une structure JSON à partir des données filtrées et d'autres informations.
 
-        Args :
-        - patient_id : Identifiant du patient.
-        - date_de_naissance : Date de naissance du patient.
-        - medicaments : Liste des médicaments du patient.
+        Args:
+            labels_data_filtre (dict): Dictionnaire contenant les étiquettes et les données associées, filtrées.
+            patient_id (int): Identifiant du patient.
+            date_de_naissance (str): Date de naissance du patient.
+            medicaments (str): Médicaments pris par le patient.
+            resampled_times (ndarray): Temps rééchantillonné.
+            events_dict (dict): Dictionnaire contenant les événements et leur temps correspondant.
+            normes (dict): Dictionnaire contenant les normes calculées.
 
-        Explications :
-        - json_data : Dictionnaire contenant les données dans le format JSON.
-
-        Retour :
-        - json_data : Dictionnaire JSON contenant les données du patient.
+        Returns:
+            dict: Structure JSON contenant les données et les métadonnées.
         """
         self.json_data = {
             "metadata": {
@@ -234,16 +339,16 @@ class PreProcessing:
                     "medicaments": medicaments
                 },
                 "temps": self.resampled_times.tolist()
-            }
         }
-
-        for key, value in self.labels_data_filtre.items():
+    }
+    
+        for key, value in self.labels_data_filtre_modifies.items():
             parts = key.split('_')
             sensor = parts[1]
             side = parts[0]
             measure = parts[2]
             axis = parts[3]
-
+        
             if sensor not in self.json_data:
                 self.json_data[sensor] = {}
 
@@ -253,8 +358,9 @@ class PreProcessing:
             if measure not in self.json_data[sensor][side]:
                 self.json_data[sensor][side][measure] = {}
 
-            self.json_data[sensor][side][measure][axis] = value.tolist()
-
+            if axis not in self.json_data[sensor][side][measure]:
+                self.json_data[sensor][side][measure][axis] = value.tolist()
+        
         for key in self.normes:
             parts = key.split('_')
             sensor = parts[1]
@@ -271,25 +377,37 @@ class PreProcessing:
             if measure not in self.json_data[sensor][side]:
                 self.json_data[sensor][side][measure] = {}
 
-            self.json_data[sensor][side][measure][axis] = value.tolist()
+            # Insérer la norme au même niveau d'indentation que l'axe
             self.json_data[sensor][side][measure]["norme"] = self.normes[key].tolist()
-
-        if "FOG_begin" in self.events_dict and "FOG_end" in self.events_dict: # Si les événements FOG sont présents
+    
+            # # Ajouter les événements FOG
+            # json_data["FOG"] = {
+            #     "Debut": events_dict["FOG_begin"],
+            #     "Fin": events_dict["FOG_end"]
+            # }
+    
+            # # Ajouter tous les évènements sauf FOG
+            # del events_dict["FOG_begin"]
+            # del events_dict["FOG_end"]
+            
+        if "FOG_begin" in self.events_dict and "FOG_end" in self.events_dict:
             self.json_data["FOG"] = {
-                "debut": self.events_dict["FOG_begin"], 
-                "fin": self.events_dict["FOG_end"]
+                "Debut": self.events_dict["FOG_begin"], 
+                "Fin": self.events_dict["FOG_end"]
             }
-            del self.events_dict["FOG_begin"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
-            del self.events_dict["FOG_end"] # Supprimer les événements FOG du dictionnaire pour n'avoir que les évènements de parcours
-        else: # Si les événements FOG ne sont pas présents
+            del self.events_dict["FOG_begin"]
+            del self.events_dict["FOG_end"]
+        else:
             self.json_data["FOG"] = {
-                "debut": 0, 
-                "fin": 0
+                "debut": [0],
+                "fin": [0]
             }
-
+    
         self.json_data["parcours"] = self.events_dict
-
+    
         return self.json_data
+
+    
 
     def creation_json_grace_c3d(self, patient_id, date_de_naissance, medicaments):#, output_path):
         """
@@ -311,6 +429,7 @@ class PreProcessing:
         self.recuperer_evenements() # Récupérer les événements
         self.reechantillonnage_fc_coupure_et_association_labels_et_data() # Rééchantillonner, filtrer et associer les données
         self.filtrer_labels() # Filtrer les étiquettes pour ne garder que les données de GYRO et ACC
+        self.modifier_label_pelvis() # Modifier les étiquettes pour le capteur 'pelvis'
         self.calcul_norme() # Calculer les normes
         self.json_data = self.creer_structure_json(patient_id, date_de_naissance, medicaments) # Créer la structure JSON
         #with open(output_path, 'w') as outfile: # Ouvrir le fichier de sortie
@@ -771,7 +890,7 @@ class PreProcessing:
         return self.concat_data
 ################### Fin concaténation des labels et des données ###################
     
-    def plot_data_FOG_start_end_final(self, muscle, side, sensor_type, axis,label, window_index):
+    def plot_data_FOG_start_end_final(self, muscle, side, sensor_type,axis, window_index):
         """
         Cette fonction permet de comparer les événements de FOG renseignés entre deux neurologues sur un signal donné.
         Args:
@@ -785,30 +904,31 @@ class PreProcessing:
                 for event in events:
                     plt.axvline(x=event, color=color, linestyle=linestyle, label=label)
 
-        events_1_begin = self.mix_label_fenetre_data["FOG"].get("debut", [])
-        events_1_end = self.mix_label_fenetre_data["FOG"].get("fin", [])
+        events_1_begin = self.concat_data["FOG"].get("debut", [])
+        events_1_end = self.concat_data["FOG"].get("fin", [])
 
-        data_to_plot = self.mix_label_fenetre_data[muscle][side][sensor_type][axis][label][window_index]
+        data_to_plot = self.concat_data[muscle][side][sensor_type][axis][window_index]
+        data_to_plot = data_to_plot.drop(columns=["label"])
         plt.figure(figsize=(12, 6))
-        plt.plot(self.mix_label_fenetre_data["metadata"]["temps"][window_index], data_to_plot)
-        title = f"{muscle} - {side} - {sensor_type} - {axis} - {label} - {window_index}"
+        plt.plot(self.concat_data["metadata"]["temps"][window_index], data_to_plot)
+        title = f"{muscle} - {side} - {sensor_type} - {axis} - {window_index}"
 
-        plot_events_vertical_lines(events_1_begin, 'green', '--', f'FOG_begin')
-        plot_events_vertical_lines(events_1_end, 'red', '--', f'FOG_end')
+        #plot_events_vertical_lines(events_1_begin, 'green', '--', f'FOG_begin')
+        #plot_events_vertical_lines(events_1_end, 'red', '--', f'FOG_end')
 
         plt.xlabel('Temps (s)')
         plt.ylabel('')
         plt.title(title)
-        handles, labels = plt.gca().get_legend_handles_labels()
-        unique_labels = []
-        unique_handles = []
-        for i, label in enumerate(labels):
-            if label not in unique_labels:
-                unique_labels.append(label)
-                unique_handles.append(handles[i])
-        plt.legend(unique_handles, unique_labels)
-        plt.tight_layout()
-        plt.show()
+        # handles, labels = plt.gca().get_legend_handles_labels()
+        # unique_labels = []
+        # unique_handles = []
+        # for i, label in enumerate(labels):
+        #     if label not in unique_labels:
+        #         unique_labels.append(label)
+        #         unique_handles.append(handles[i])
+        # plt.legend(unique_handles, unique_labels)
+        # plt.tight_layout()
+        # plt.show()
 
 
 class Statistics:
