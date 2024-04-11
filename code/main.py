@@ -392,8 +392,8 @@ class PreProcessing:
             
         if "FOG_begin" in self.events_dict and "FOG_end" in self.events_dict:
             self.json_data["FOG"] = {
-                "Debut": self.events_dict["FOG_begin"], 
-                "Fin": self.events_dict["FOG_end"]
+                "debut": self.events_dict["FOG_begin"], 
+                "fin": self.events_dict["FOG_end"]
             }
             del self.events_dict["FOG_begin"]
             del self.events_dict["FOG_end"]
