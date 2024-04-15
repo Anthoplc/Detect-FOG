@@ -315,7 +315,7 @@ class PreProcessing:
     
     
     
-    def creer_structure_json(self, patient_id, date_de_naissance, medicaments):
+    def creer_structure_json(self):
         """
         Cette fonction crée une structure JSON à partir des données filtrées et d'autres informations.
 
@@ -331,12 +331,29 @@ class PreProcessing:
         Returns:
             dict: Structure JSON contenant les données et les métadonnées.
         """
+        parts = self.file_path.split('/')
+        filename = parts[-1].split('_')
+        patient_id = '_'.join(filename[:3])
+        date_de_naissance = filename[2]
+        medicaments = filename[3]
+        condition = filename[4].split(' ')[0]  # Nettoie la partie condition pour enlever les espaces et parenthèses
+        #     # Extraction du numéro de la vidéo en nettoyant la chaîne
+            
+        # video_part = filename[4]  # Ajustez l'indice selon votre structure de nom de fichier
+        # video = video_part.split(' ')[1]  # Séparer sur l'espace
+        # video = video.replace('(', '').replace(').c3d', '')  # Enlever les parenthèses et l'extension
+        
+        
+        
+        
+        ###################################################################""
         self.json_data = {
             "metadata": {
                 "details du patient": {
                     "identifiant": patient_id,
                     "date de naissance": date_de_naissance,
-                    "medicaments": medicaments
+                    "medicaments": medicaments,
+                    "condition": condition
                 },
                 "temps": self.resampled_times.tolist()
         }
@@ -409,7 +426,7 @@ class PreProcessing:
 
     
 
-    def creation_json_grace_c3d(self, patient_id, date_de_naissance, medicaments):#, output_path):
+    def creation_json_grace_c3d(self):#, output_path):
         """
         Fonction principale pour créer un fichier JSON à partir des données C3D.
 
@@ -431,7 +448,7 @@ class PreProcessing:
         self.filtrer_labels() # Filtrer les étiquettes pour ne garder que les données de GYRO et ACC
         self.modifier_label_pelvis() # Modifier les étiquettes pour le capteur 'pelvis'
         self.calcul_norme() # Calculer les normes
-        self.json_data = self.creer_structure_json(patient_id, date_de_naissance, medicaments) # Créer la structure JSON
+        self.json_data = self.creer_structure_json() # Créer la structure JSON
         #with open(output_path, 'w') as outfile: # Ouvrir le fichier de sortie
         return self.json_data
             #json.dump(self.json_data, outfile, indent=4) # Écrire les données dans le fichier de sortie
@@ -932,9 +949,10 @@ class PreProcessing:
 
 
 class Statistics:
-    def __init__(self, concat_data):
+    def __init__(self, file_path, concat_data):
         self.concat_data = concat_data
         self.taille_fenetre = 2 # Taille de la fenêtre en secondes
+        self.file_path = file_path
         
     def stats(self):
         # On calcul la durée totale de l'enregistrement
@@ -949,35 +967,59 @@ class Statistics:
         
         
         temps_total = last_time - first_time
-        print("Temps total de l'enregistrement :", temps_total, "secondes")
 
         # On calcul le nombre de FOG et le pourcentage de FOG sur la totalité de l'enregistrement
         if  self.concat_data["FOG"]["debut"] == [0] : #si on a pas de FOG, nous sommes censé avoir une liste avec un seul élément qui est 0
             nb_fog = 0
-            print(f"Nombre de FOG : {nb_fog}")
         else :
             nb_fog = len(self.concat_data["FOG"]["debut"])
-            print(f"Nombre de FOG : {nb_fog}")
 
         temps_fog = sum([fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])])
         prct_fog = (temps_fog / temps_total) * 100
-        print(f"Pourcentage total de FOG sur la totalité de l'enregistrement : {prct_fog:.2f}%")
         
         
         nb_fenetre = len(self.concat_data["metadata"]["temps"])
         nb_colonne = len(self.concat_data["metadata"]["temps"].columns)
         
-        tab_stat = pd.DataFrame({"Temps total de l'enregistrement": [temps_total], 
-                                 "Nombre de FOG": [nb_fog], 
-                                 "Pourcentage total de FOG": [prct_fog],
-                                 "Temps de chaque fenêtre" : [self.taille_fenetre], 
-                                 "nombre de fenêtres": [nb_fenetre], 
-                                 "longueur des fenêtres": [nb_colonne]})
-        
         temps_fog = [fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])]
+
+
+        # Extraction des informations du file_path
+        parts = self.file_path.split('/')
+        filename = parts[-1].split('_')
+        identifiant = '_'.join(filename[:3])
+        anniversaire = filename[2]
+        statut = filename[3]
+        condition = filename[4]  # Nettoie la partie condition pour enlever les espaces et parenthèses
+        video = filename[5].replace('.c3d', '')  # Ajustez l'indice selon votre structure de nom de fichier
+
+        # Calculs existants...
+        # Ajout des nouvelles colonnes
+        tab_stat = pd.DataFrame({
+            "Temps total de l'enregistrement": [temps_total],
+            "Nombre de FOG": [nb_fog],
+            "Temps total de Freezing": [temps_fog],
+            "Pourcentage total de FOG": [prct_fog],
+            "Temps de chaque fenêtre": [self.taille_fenetre],
+            "Nombre de fenêtres": [nb_fenetre],
+            "Longueur des fenêtres": [nb_colonne],
+            "Statut": [statut],
+            "Condition": [condition],
+            "Vidéo": [video],
+            "Identifiant": [identifiant]
+        })
         
-        tab_fog = pd.DataFrame({"Debut": self.concat_data["FOG"]["debut"], 
-                                "Fin": self.concat_data["FOG"]["fin"], 
-                                "Total" : temps_fog})
-        return tab_stat, tab_fog
+        # tab_stat = pd.DataFrame({"Temps total de l'enregistrement": [temps_total], 
+        #                          "Nombre de FOG": [nb_fog],
+        #                          "Temps total de Freezing" : [temps_fog],
+        #                          "Pourcentage total de FOG": [prct_fog],
+        #                          "Temps de chaque fenêtre" : [self.taille_fenetre], 
+        #                          "nombre de fenêtres": [nb_fenetre], 
+        #                          "longueur des fenêtres": [nb_colonne]})
+        
+        
+        # tab_fog = pd.DataFrame({"Debut": self.concat_data["FOG"]["debut"], 
+        #                         "Fin": self.concat_data["FOG"]["fin"], 
+        #                         "Total" : temps_fog})
+        return tab_stat
     
