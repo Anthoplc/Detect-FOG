@@ -1650,4 +1650,3 @@ class ExtractionFeatures:
         combined_df = data_concat[['label'] + [col for col in data_concat.columns if col != 'label']]
 
         return combined_df
-
