@@ -1584,15 +1584,12 @@ class ExtractionFeatures:
 
     def calcul_energie (self):
         magnitudes = self.fft_magnitudes.values  # Convertissons le DataFrame en numpy array si ce n'est pas déjà le cas
-        energie_liste = []
         
-        for window in magnitudes:
-            # Calculer l'énergie de la fenêtre comme la somme des carrés des valeurs du signal divisée par la longueur de la fenêtre
-            energie = np.sum(np.square(magnitudes)) / len(window)
-            energie_liste.append(energie)
+        # Calcul de l'énergie pour chaque signal (chaque ligne)
+        energy = np.sum(np.abs(magnitudes)**2 / len(magnitudes), axis=1)
         
         # Créer un DataFrame pour stocker les résultats
-        df_energie = pd.DataFrame({'Energie': energie_liste})
+        df_energie = pd.DataFrame({'Energie_Frequentielle': energy})
             
         return df_energie
     #____________________________________________________________________________________________________________________________
