@@ -1459,69 +1459,69 @@ class ExtractionFeatures:
 
 
 
-    def skewness_band_freq (self):
-        magnitudes = self.fft_magnitudes.values  # Convertissons le DataFrame en numpy array si ce n'est pas déjà le cas
-        frequences = self.frequencies.values.flatten()
+    # def skewness_band_freq (self):
+    #     magnitudes = self.fft_magnitudes.values  # Convertissons le DataFrame en numpy array si ce n'est pas déjà le cas
+    #     frequences = self.frequencies.values.flatten()
 
 
-        # Définissons les bandes de fréquences spécifiées
-        bandes_frequence = {
-            'skewness': (0, 50),
-            'skewness_0.04_0.68_Hz': (0.04, 0.68),
-            'skewness_0.68_3_Hz': (0.68, 3),
-            'skewness_3_8_Hz': (3, 8),
-            'skewness_8_20_Hz': (8, 20),
-            'skewness_0.1_8_Hz': (0.1, 8)
-        }
+    #     # Définissons les bandes de fréquences spécifiées
+    #     bandes_frequence = {
+    #         'skewness': (0, 50),
+    #         'skewness_0.04_0.68_Hz': (0.04, 0.68),
+    #         'skewness_0.68_3_Hz': (0.68, 3),
+    #         'skewness_3_8_Hz': (3, 8),
+    #         'skewness_8_20_Hz': (8, 20),
+    #         'skewness_0.1_8_Hz': (0.1, 8)
+    #     }
 
-        # Créons un DataFrame pour stocker les écarts types calculés pour chaque bande de fréquence et pour chaque ligne (fenêtre)
-        skwenesss = pd.DataFrame()
+    #     # Créons un DataFrame pour stocker les écarts types calculés pour chaque bande de fréquence et pour chaque ligne (fenêtre)
+    #     skwenesss = pd.DataFrame()
 
-        # Pour chaque bande de fréquence, filtrons les données et calculons l'écart type
-        for nom_bande, (freq_min, freq_max) in bandes_frequence.items():
+    #     # Pour chaque bande de fréquence, filtrons les données et calculons l'écart type
+    #     for nom_bande, (freq_min, freq_max) in bandes_frequence.items():
         
-            # Identifions les colonnes correspondant à la bande de fréquence
-            colonnes_bande = (frequences >= freq_min) & (frequences <= freq_max)
+    #         # Identifions les colonnes correspondant à la bande de fréquence
+    #         colonnes_bande = (frequences >= freq_min) & (frequences <= freq_max)
         
-            # Filtrons les magnitudes pour cette bande de fréquence
-            magnitudes_bande = magnitudes[:, colonnes_bande]
+    #         # Filtrons les magnitudes pour cette bande de fréquence
+    #         magnitudes_bande = magnitudes[:, colonnes_bande]
         
-            # Calculons l'écart type pour cette bande de fréquence et ajoutons les résultats au DataFrame
-            skwenesss[nom_bande] = skew(magnitudes_bande,axis=1)
+    #         # Calculons l'écart type pour cette bande de fréquence et ajoutons les résultats au DataFrame
+    #         skwenesss[nom_bande] = skew(magnitudes_bande,axis=1)
             
-        return skwenesss
+    #     return skwenesss
 
 
 
-    def kurtosis_band_freq (self) :
-        magnitudes = self.fft_magnitudes.values  # Convertissons le DataFrame en numpy array si ce n'est pas déjà le cas
-        frequences = self.frequencies.values.flatten()
-        # Définissons les bandes de fréquences spécifiées
-        bandes_frequence = {
-            'kurtosis': (0, 50),
-            'kurtosis_0.04_0.68_Hz': (0.04, 0.68),
-            'kurtosis_0.68_3_Hz': (0.68, 3),
-            'kurtosis_3_8_Hz': (3, 8),
-            'kurtosis_8_20_Hz': (8, 20),
-            'kurtosis_0.1_8_Hz': (0.1, 8)
-        }
+    # def kurtosis_band_freq (self) :
+    #     magnitudes = self.fft_magnitudes.values  # Convertissons le DataFrame en numpy array si ce n'est pas déjà le cas
+    #     frequences = self.frequencies.values.flatten()
+    #     # Définissons les bandes de fréquences spécifiées
+    #     bandes_frequence = {
+    #         'kurtosis': (0, 50),
+    #         'kurtosis_0.04_0.68_Hz': (0.04, 0.68),
+    #         'kurtosis_0.68_3_Hz': (0.68, 3),
+    #         'kurtosis_3_8_Hz': (3, 8),
+    #         'kurtosis_8_20_Hz': (8, 20),
+    #         'kurtosis_0.1_8_Hz': (0.1, 8)
+    #     }
 
-        # Créons un DataFrame pour stocker les écarts types calculés pour chaque bande de fréquence et pour chaque ligne (fenêtre)
-        kurtosiss = pd.DataFrame()
+    #     # Créons un DataFrame pour stocker les écarts types calculés pour chaque bande de fréquence et pour chaque ligne (fenêtre)
+    #     kurtosiss = pd.DataFrame()
 
-        # Pour chaque bande de fréquence, filtrons les données et calculons l'écart type
-        for nom_bande, (freq_min, freq_max) in bandes_frequence.items():
+    #     # Pour chaque bande de fréquence, filtrons les données et calculons l'écart type
+    #     for nom_bande, (freq_min, freq_max) in bandes_frequence.items():
         
-            # Identifions les colonnes correspondant à la bande de fréquence
-            colonnes_bande = (frequences >= freq_min) & (frequences <= freq_max)
+    #         # Identifions les colonnes correspondant à la bande de fréquence
+    #         colonnes_bande = (frequences >= freq_min) & (frequences <= freq_max)
         
-            # Filtrons les magnitudes pour cette bande de fréquence
-            magnitudes_bande = magnitudes[:, colonnes_bande]
+    #         # Filtrons les magnitudes pour cette bande de fréquence
+    #         magnitudes_bande = magnitudes[:, colonnes_bande]
         
-            # Calculons l'écart type pour cette bande de fréquence et ajoutons les résultats au DataFrame
-            kurtosiss[nom_bande] = kurtosis(magnitudes_bande,axis=1)
+    #         # Calculons l'écart type pour cette bande de fréquence et ajoutons les résultats au DataFrame
+    #         kurtosiss[nom_bande] = kurtosis(magnitudes_bande,axis=1)
         
-        return kurtosiss
+    #     return kurtosiss
 
     def calcul_locomotion_band_power (self):
     # Locomotion band power
@@ -1613,8 +1613,8 @@ class ExtractionFeatures:
                                 ecart_types = self.ecart_type_borne()
                                 freeze_index = self.calculer_freeze_index()
                                 ratio_faible_puissance = self.ratio_faible_puissance_entre_0_2Hz()
-                                skewness = self.skewness_band_freq()
-                                kurtosis = self.kurtosis_band_freq()
+                                # skewness = self.skewness_band_freq()
+                                # kurtosis = self.kurtosis_band_freq()
                                 locomotion_band_power = self.calcul_locomotion_band_power()
                                 freeze_band_power = self.calcul_freeze_band_power()
                                 band_power = self.calcul_band_power()
@@ -1628,8 +1628,8 @@ class ExtractionFeatures:
                                                             ecart_types,
                                                             freeze_index,
                                                             ratio_faible_puissance,
-                                                            skewness,
-                                                            kurtosis,
+                                                            # skewness,
+                                                            # kurtosis,
                                                             locomotion_band_power,
                                                             freeze_band_power,
                                                             band_power,
@@ -1645,5 +1645,7 @@ class ExtractionFeatures:
         label_dataframe = pd.DataFrame(self.label)
         data_concat = pd.concat([df_final,label_dataframe],axis = 1)
         combined_df = data_concat[['label'] + [col for col in data_concat.columns if col != 'label']]
+        # Arrondir toutes les valeurs numériques à quatre décimales
+        combined_df = combined_df.round(4)
 
         return combined_df
