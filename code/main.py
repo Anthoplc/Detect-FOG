@@ -792,10 +792,12 @@ class PreProcessing:
                     window_events.append(row['events'])  # Ajouter l'événement à la liste
                     if row['events']== "fin_fog": # si l'évènement est fin_fog
                         time.append(row["temps"])
-                                    
+                        
+                        
             if len(window_events)==1 and "fin_fog" in window_events: #si on oa une liste avec uniquement fin_fog
                 time_array = np.arange(w_start,w_end,1/50) # on crée un vecteur de temps pour la fenêtre
                 time_pourcent = np.sum(time_array<=time)/100 # on calcule le pourcentage de temps de FOG dans la fenêtre
+    
     
             if not window_events:  # Si la liste est vide
                 window_events = [None]  # Remplir avec None
@@ -811,11 +813,11 @@ class PreProcessing:
             
             elif status == "transitionFog" and None in window_events: #si le FOG est suffisement long pour ne pas rencontrer d'évènement après debut_Fog alors :
                 status = "fog"
-        
-            elif "debut_fog" in window_events and "fin_fog" in window_events: #si il est petit alors la fenêtre peut comporter l'évènement de début et de fin
+                
+            elif status == "transitionFog" and ("debut_fog" in window_events and "fin_fog" in window_events): #si il est petit alors la fenêtre peut comporter l'évènement de début et de fin
                 status = "fog"
             
-            elif status =="fog" and ("debut_fog" in window_events and "fin_fog" in window_events): # dans le cas où des FOG sont succints, donc c'est à dire quand la fenêtre comporte fin_fog et debut du fog suivant alors :  
+            elif status =="fog" and ("fin_fog" in window_events and "debut_fog" in window_events): # dans le cas où des FOG sont succints, donc c'est à dire quand la fenêtre comporte fin_fog et debut du fog suivant alors :  
                 status= "transitionFog"
         
             elif status == "fog" and "fin_fog" in window_events and time_pourcent <= 0.5: # si on a un FOG inférieur à 50% de la longueur de fenêtre, alors : 
@@ -992,16 +994,13 @@ class Statistics:
         else :
             nb_fog = len(self.concat_data["FOG"]["debut"])
 
-        temps_fog = sum([fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])])
+        temps_fog = sum(fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"]))
         prct_fog = (temps_fog / temps_total) * 100
-        
+
         
         nb_fenetre = len(self.concat_data["metadata"]["temps"])
         nb_colonne = len(self.concat_data["metadata"]["temps"].columns)
         
-        temps_fog = [fin - debut for debut, fin in zip(self.concat_data["FOG"]["debut"], self.concat_data["FOG"]["fin"])]
-
-
         # Extraction des informations du file_path
         parts = self.file_path.split('/')
         filename = parts[-1].split('_')
