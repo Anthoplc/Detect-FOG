@@ -13,6 +13,21 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
 from scipy.fft import fft, fftfreq
 import entropy as ent
+import os
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.pipeline import Pipeline
+import os
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from imblearn.pipeline import Pipeline
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+from numpy import mean
 
 
 class PreProcessing:
@@ -1645,6 +1660,63 @@ class ExtractionFeatures:
         data_concat = pd.concat([df_final,label_dataframe],axis = 1)
         combined_df = data_concat[['label'] + [col for col in data_concat.columns if col != 'label']]
         # Arrondir toutes les valeurs numériques à quatre décimales
-        combined_df = combined_df.round(4)
+        # combined_df = combined_df.round(4)
 
         return combined_df
+    
+    ################################# La suite nécessite d'avoir au préalable combiné tous les dataframes de chaque condition ou de patients #################################"
+
+######## On récupère le fichier combined_df stocké dans un fichier csv
+
+class Resampledata:
+    def __init__(self, filepath):
+        ################### Initialisation des attributs pour création JSON ###################
+        self.filepath = filepath #data frame csv contenant toutes les données
+        self.smote_strategies = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,1]
+        self.under_strategies = [0.1,0.2,0.3,0.4, 0.5, 0.6, 0.7,0.8,0.9,1]
+
+    def apply_vc_resampling_pipeline(self):
+        print(f"Traitement du fichier {self.filepath}...")
+        try:
+            data = pd.read_csv(self.filepath)
+            data_filtered = data.dropna(axis=1)
+            data_filtered = data_filtered[data_filtered['label'] != 'transitionNoFog']
+            X = data_filtered.drop('label', axis=1)
+            y = data_filtered['label'].apply(lambda x: 1 if x in ['fog', 'transitionFog'] else 0)
+            X_scaled = StandardScaler().fit_transform(X)
+            X_train, _, y_train, _ = train_test_split(X_scaled, y, test_size=0.3, shuffle=True, stratify=y, random_state=42)
+            
+            model = DecisionTreeClassifier(random_state=42)
+            steps = [('model', model)]
+            if y_train.value_counts().get(1, 0) < y_train.value_counts().get(0, 0):
+                steps = [('smote', SMOTE(sampling_strategy=self.smote_strategies, random_state=42)),
+                        ('under_sampler', RandomUnderSampler(sampling_strategy=self.under_strategies, random_state=42))] + steps
+            pipeline = Pipeline(steps)
+            scores = cross_val_score(pipeline, X_train, y_train, scoring='roc_auc', cv=StratifiedKFold(n_splits=10, shuffle=True, random_state=42), n_jobs=-1)
+            return {
+                'File': self.filepath,
+                'SMOTE Strategy': self.smote_strategies if steps[0][0] == 'smote' else 'None',
+                'Under Strategy': self.under_strategies if steps[1][0] == 'under_sampler' else 'None',
+                'ROC AUC Score': mean(scores),
+                'Note': 'No resampling due to class 1 >= class 0' if steps[0][0] != 'smote' else 'Resampling applied'
+            }
+        except Exception as e:
+            print(f"Error processing {self.filepath}: {str(e)}")
+            return {'File': self.filepath, 'Error': str(e)}       
+        
+         
+                
+####### On récupère les meilleuirs paramètres de la VC
+    def get_best_resampling_params(self):
+        # DataFrame to store results
+        results_df = pd.DataFrame()
+        for smote_strategy in self.smote_strategies:
+            for under_strategy in self.under_strategies:
+                result = self.apply_vc_resampling_pipeline(smote_strategy, under_strategy)
+                results_df = results_df.append(result, ignore_index=True)
+                print(f"Added results for {self.filename} with SMOTE {smote_strategy} and UNDER {under_strategy} to the DataFrame.")
+
+        return results_df
+            
+            
+    
