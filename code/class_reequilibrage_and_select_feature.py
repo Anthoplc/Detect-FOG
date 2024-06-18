@@ -1,9 +1,11 @@
 import os
 import pandas as pd
 import numpy as np
+import random
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
+from skrebate import ReliefF
 import time
 from imblearn.pipeline import Pipeline as ImPipeline
 from imblearn.over_sampling import SMOTE
@@ -274,6 +276,97 @@ class FileProcessor:
         resampler = ResamplingPipeline(X, y)
         saver = DataSaver(self.base_filename, save_directory)
         saver.save_data(resampler.X_train, resampler.X_test, resampler.y_train, resampler.y_test, "brut")
+        
+        
+        
+        
+        
+        
+        
+        
+        
+class FeatureRankingProcessor:
+    def __init__(self, train_folder, output_folder):
+        self.train_folder = train_folder
+        self.output_folder = output_folder
+
+    def set_random_seed(self, seed):
+        np.random.seed(seed)
+        random.seed(seed)
+
+    def load_train_data(self, data_type):
+        data_dict = {}
+        print(f"Chargement des données de type '{data_type}' depuis le dossier : {self.train_folder}")
+        
+        for file in os.listdir(self.train_folder):
+            file_path = os.path.join(self.train_folder, file)
+            if file.endswith(f'_{data_type}.csv'):
+                identifier = file.split(f'_{data_type}.csv')[0].replace('X_train_', '').replace('y_train_', '')
+                if identifier not in data_dict:
+                    data_dict[identifier] = {}
+                if 'X_train' in file:
+                    print(f"Chargement du fichier X_train pour l'identifiant : {identifier}")
+                    #data_dict[identifier]['X_train'] = pd.read_csv(file_path)
+                    data_dict[identifier]['X_train'] = pd.read_csv(file_path).head(10)  # Load only the first 10 rows
+                    
+                elif 'y_train' in file:
+                    print(f"Chargement du fichier y_train pour l'identifiant : {identifier}")
+                    #data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze()
+                    data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze().head(10)  # Load only the first 10 rows
+
+
+        print(f"Données chargées pour les identifiants : {list(data_dict.keys())}")
+        return data_dict
+
+    def apply_relief(self, data_type='brut', random_seed=42):
+        print(f"\nDébut de l'application de ReliefF sur les données de type '{data_type}'")
+        self.set_random_seed(random_seed)
+        data_dict = self.load_train_data(data_type)
+
+        for key, data in data_dict.items():
+            X = data['X_train']
+            y = data['y_train']
+
+            print(f"\nTraitement du dataset : {key}")
+            start_time = time.time()
+
+            print("Application de ReliefF...")
+            relief = ReliefF()
+            relief.fit(X.values, y.values)
+
+            feature_importances = relief.feature_importances_
+            feature_names = X.columns.tolist()
+
+            features_importance = pd.DataFrame({
+                'Feature': feature_names,
+                'Score': feature_importances
+            })
+
+            features_importance_sorted = features_importance.sort_values(by='Score', ascending=False)
+
+            os.makedirs(self.output_folder, exist_ok=True)
+            output_file = os.path.join(self.output_folder, f'{key}_classement_relief_{data_type}.csv')
+            features_importance_sorted.to_csv(output_file, index=False)
+
+            stop_time = time.time()
+            total_time = stop_time - start_time
+            print(f"Temps d'execution de ReliefF pour {key} ({data_type}) = {total_time:.2f} secondes")
+            print(f"Importances des features pour {key} ({data_type}) sauvegardées dans : {output_file}")
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 class DirectoryProcessor:
     """
@@ -337,7 +430,7 @@ class DirectoryProcessor:
 
 ######## Traitement par répertoire ########
 # Début du chronométrage pour le suréchantillonnage
-start_time_over = time.time()
+#start_time_over = time.time()
 
 # Chemin vers le répertoire des données
 #directory_path = 'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient/'
@@ -384,21 +477,32 @@ start_time_over = time.time()
 # Example usage:
 root_directory = 'C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01'
 patient_id = os.path.basename(root_directory)
-combined_file_path = os.path.join(root_directory, 'ON_OFF', f'{patient_id}_all_extraction_ON_OFF.csv')
+# combined_file_path = os.path.join(root_directory, 'ON_OFF', f'{patient_id}_all_extraction_ON_OFF.csv')
 
-# Process with over-sampling
-processor_over = FileProcessor(combined_file_path)
-processor_over.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over100.csv'))
+# # Process with over-sampling
+# processor_over = FileProcessor(combined_file_path)
+# processor_over.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over100.csv'))
 
-# Process with optimized sampling
-processor_optimise = FileProcessor(combined_file_path)
-processor_optimise.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimize.csv'))
+# # Process with optimized sampling
+# processor_optimise = FileProcessor(combined_file_path)
+# processor_optimise.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimize.csv'))
 
-# Save raw data splits
-processor_raw = FileProcessor(combined_file_path)
-processor_raw.save_raw_data_splits(root_directory)
+# # Save raw data splits
+# processor_raw = FileProcessor(combined_file_path)
+# processor_raw.save_raw_data_splits(root_directory)
 
 
-end_time_over = time.time()
-total_time_over = end_time_over - start_time_over
-print(f"Temps d'exécution total : {total_time_over:.2f} seconds")
+# end_time_over = time.time()
+# total_time_over = end_time_over - start_time_over
+# print(f"Temps d'exécution total : {total_time_over:.2f} seconds")
+
+#_________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+# Apply ReliefF to the saved data
+train_folder = os.path.join(root_directory, 'train_ON_OFF')
+output_folder = os.path.join(root_directory, 'classement_features_ON_OFF')
+
+feature_ranking_processor = FeatureRankingProcessor(train_folder, output_folder)
+feature_ranking_processor.apply_relief(data_type='brut')
+feature_ranking_processor.apply_relief(data_type='optimise')
+feature_ranking_processor.apply_relief(data_type='over100')
