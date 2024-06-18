@@ -149,12 +149,14 @@ class DataSaver:
         - suffix : Suffixe à ajouter aux noms de fichiers.
         """
         print(f"Début de la sauvegarde pour {self.base_filename} avec suffixe {suffix}")
-        train_path = f"{self.directory_path}/train/X_train_{self.base_filename}_{suffix}.csv"
-        train_label_path = f"{self.directory_path}/train/y_train_{self.base_filename}_{suffix}.csv"
-        test_path = f"{self.directory_path}/test/X_test_{self.base_filename}_{suffix}.csv"
-        test_label_path = f"{self.directory_path}/test/y_test_{self.base_filename}_{suffix}.csv"
+        train_path = f"{self.directory_path}/train_ON_OFF/X_train_{self.base_filename}_{suffix}.csv"
+        train_label_path = f"{self.directory_path}/train_ON_OFF/y_train_{self.base_filename}_{suffix}.csv"
+        test_path = f"{self.directory_path}/test_ON_OFF/X_test_{self.base_filename}_{suffix}.csv"
+        test_label_path = f"{self.directory_path}/test_ON_OFF/y_test_{self.base_filename}_{suffix}.csv"
         
-        # Enregistrement des données
+        os.makedirs(os.path.dirname(train_path), exist_ok=True)
+        os.makedirs(os.path.dirname(test_path), exist_ok=True)
+        
         pd.DataFrame(X_train).to_csv(train_path, index=False, header=True)
         print(f"Données d'entraînement sauvegardées : {train_path}")
         pd.Series(y_train).to_csv(train_label_path, index=False, header=True)
@@ -163,7 +165,7 @@ class DataSaver:
         print(f"Données de test sauvegardées : {test_path}")
         pd.Series(y_test).to_csv(test_label_path, index=False, header=True)
         print(f"Étiquettes de test sauvegardées : {test_label_path}")
-        print(f"Fin de la sauvegarde pour {self.base_filename} avec suffixe {suffix}")
+        print(f"Fin de la sauvegarde pour {self.base_filename} avec suffixe {suffix}\n")
 
 class FileProcessor:
     """
@@ -338,7 +340,7 @@ class DirectoryProcessor:
 start_time_over = time.time()
 
 # Chemin vers le répertoire des données
-directory_path = 'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient/'
+#directory_path = 'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient/'
 
 # Processus de suréchantillonnage pour chaque fichier dans le répertoire
 # processor_over = DirectoryProcessor(directory_path)
@@ -376,3 +378,27 @@ directory_path = 'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_
 # processor_optimise = FileProcessor(filepath)
 # processor_optimise.process_file_optimise("C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient_final_optimise_test", # chemin de sauvegarde des données optimisées
 #                                          'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/resultats_resampling_by_patient/best_combinations_optimize_test.csv')
+
+
+
+# Example usage:
+root_directory = 'C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01'
+patient_id = os.path.basename(root_directory)
+combined_file_path = os.path.join(root_directory, 'ON_OFF', f'{patient_id}_all_extraction_ON_OFF.csv')
+
+# Process with over-sampling
+processor_over = FileProcessor(combined_file_path)
+processor_over.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over100.csv'))
+
+# Process with optimized sampling
+processor_optimise = FileProcessor(combined_file_path)
+processor_optimise.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimize.csv'))
+
+# Save raw data splits
+processor_raw = FileProcessor(combined_file_path)
+processor_raw.save_raw_data_splits(root_directory)
+
+
+end_time_over = time.time()
+total_time_over = end_time_over - start_time_over
+print(f"Temps d'exécution total : {total_time_over:.2f} seconds")
