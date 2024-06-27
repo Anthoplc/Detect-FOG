@@ -151,10 +151,10 @@ class DataSaver:
         - suffix : Suffixe à ajouter aux noms de fichiers.
         """
         print(f"Début de la sauvegarde pour {self.base_filename} avec suffixe {suffix}")
-        train_path = f"{self.directory_path}/train_ON_OFF/X_train_{self.base_filename}_{suffix}.csv"
-        train_label_path = f"{self.directory_path}/train_ON_OFF/y_train_{self.base_filename}_{suffix}.csv"
-        test_path = f"{self.directory_path}/test_ON_OFF/X_test_{self.base_filename}_{suffix}.csv"
-        test_label_path = f"{self.directory_path}/test_ON_OFF/y_test_{self.base_filename}_{suffix}.csv"
+        train_path = f"{self.directory_path}/4_train_ON_OFF/X_train_{self.base_filename}_{suffix}.csv"
+        train_label_path = f"{self.directory_path}/4_train_ON_OFF/y_train_{self.base_filename}_{suffix}.csv"
+        test_path = f"{self.directory_path}/5_test_ON_OFF/X_test_{self.base_filename}_{suffix}.csv"
+        test_label_path = f"{self.directory_path}/5_test_ON_OFF/y_test_{self.base_filename}_{suffix}.csv"
         
         os.makedirs(os.path.dirname(train_path), exist_ok=True)
         os.makedirs(os.path.dirname(test_path), exist_ok=True)
@@ -283,8 +283,6 @@ class FileProcessor:
         
         
         
-        
-        
 class FeatureRankingProcessor:
     def __init__(self, train_folder, output_folder):
         self.train_folder = train_folder
@@ -353,19 +351,6 @@ class FeatureRankingProcessor:
             print(f"Temps d'execution de ReliefF pour {key} ({data_type}) = {total_time:.2f} secondes")
             print(f"Importances des features pour {key} ({data_type}) sauvegardées dans : {output_file}")
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
 
 class DirectoryProcessor:
@@ -499,10 +484,12 @@ patient_id = os.path.basename(root_directory)
 #_________________________________________________________________________________________________________________________________________________________________________________________________________________________
 
 # Apply ReliefF to the saved data
-train_folder = os.path.join(root_directory, 'train_ON_OFF')
-output_folder = os.path.join(root_directory, 'classement_features_ON_OFF')
+train_folder = os.path.join(root_directory, '4_train_ON_OFF')
+output_folder = os.path.join(root_directory, '6_classement_features_ON_OFF')
 
 feature_ranking_processor = FeatureRankingProcessor(train_folder, output_folder)
 feature_ranking_processor.apply_relief(data_type='brut')
 feature_ranking_processor.apply_relief(data_type='optimise')
 feature_ranking_processor.apply_relief(data_type='over100')
+
+
