@@ -12,35 +12,37 @@ from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
 from tqdm import tqdm
 
+
 class DataLoader:
     """
-    Classe responsable du chargement et de la préparation des données à partir d'un fichier CSV.
+    Class responsible for loading and preparing data from a CSV file.
     """
     def __init__(self, filepath):
         self.filepath = filepath
 
     def load_and_prepare_data(self):
         """
-        Charge les données à partir du fichier CSV, filtre les colonnes avec des valeurs manquantes,
-        supprime les lignes avec la valeur 'transitionNoFog' dans la colonne 'label', et prépare
-        les données pour le modèle.
-        
-        Retourne :
-        - X : Features.
-        - y : Labels binarisés (1 pour 'fog' et 'transitionFog', 0 pour les autres).
+        Loads data from the CSV file, filters columns with missing values,
+        removes rows with 'transitionNoFog' in the 'label' column, and prepares
+        the data for the model.
+
+        Returns:
+        - X: Features.
+        - y: Binarized labels (1 for 'fog' and 'transitionFog', 0 for others).
         """
-        print(f"Chargement et préparation des données pour {self.filepath}")
+        print(f"Loading and preparing data for {self.filepath}")
         data = pd.read_csv(self.filepath)
         data_filtered = data.dropna(axis=1)
-        data_filtered = data_filtered[data_filtered['label'] != 'transitionNoFog'] # Suppression du label transitionNoFog
-        X = data_filtered.drop('label', axis=1) # On enlève la colonne label
-        y = data_filtered['label'].apply(lambda x: 1 if x in ['fog', 'transitionFog'] else 0) # On binarise les labels
-        print(f"Données chargées et préparées pour {self.filepath}")
+        data_filtered = data_filtered[data_filtered['label'] != 'transitionNoFog'] # remove 'transitionNoFog' rows
+        X = data_filtered.drop('label', axis=1) # features
+        y = data_filtered['label'].apply(lambda x: 1 if x in ['fog', 'transitionFog'] else 0) # binarize labels*
+        print(f"Data loaded and prepared for {self.filepath}")
         return X, y
+
 
 class ResamplingPipeline:
     """
-    Classe responsable de la configuration des pipelines de suréchantillonnage et de resampling.
+    Class responsible for configuring oversampling and resampling pipelines.
     """
     def __init__(self, X, y):
         self.X = X
@@ -52,65 +54,68 @@ class ResamplingPipeline:
 
     def standardize_and_split(self):
         """
-        Standardise les données et divise le jeu de données en ensembles d'entraînement et de test.
-        
-        Retourne :
-        - X_train : Features d'entraînement.
-        - X_test : Features de test.
-        - y_train : Labels d'entraînement.
-        - y_test : Labels de test.
+        Standardizes the data and splits it into training and test sets. 
+        because this allows all the data to be put on the same scale. This is very important for Relief f and Random Forest
+
+        Returns:
+        - X_train: Training features.
+        - X_test: Test features.
+        - y_train: Training labels.
+        - y_test: Test labels.
         """
-        print("Standardisation et division des données")
+        print("Standardizing and splitting data")
         scaler = StandardScaler()
-        X_scaled = pd.DataFrame(scaler.fit_transform(self.X), columns=self.X.columns) # Standardisation des features avec conservation des noms de colonnes
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled, self.y, test_size=0.3, shuffle=True, stratify=self.y, random_state=42) # Division des données en ensembles d'entraînement et de test
+        X_scaled = pd.DataFrame(scaler.fit_transform(self.X), columns=self.X.columns) # standardize data and keep column names
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, self.y, test_size=0.3, shuffle=True, stratify=self.y, random_state=42)
+        print("Data standardized and split")
         return X_train, X_test, y_train, y_test
 
     def configure_pipeline_over(self):
         """
-        Configure un pipeline avec SMOTE pour suréchantillonner les données minoritaires.
-        
-        Retourne :
-        - pipeline : Pipeline de suréchantillonnage avec SMOTE.
+        Configures a pipeline with SMOTE to oversample minority data.
+
+        Returns:
+        - pipeline: Oversampling pipeline with SMOTE.
         """
-        print("Configuration du pipeline de suréchantillonnage")
+        print("Configuring oversampling pipeline")
         steps = [('smote', SMOTE(sampling_strategy=self.smote_strategy_over, random_state=42)), 
                  ('model', DecisionTreeClassifier(random_state=42))]
         return ImPipeline(steps)
 
     def configure_pipeline_optimise(self):
         """
-        Configure un pipeline avec SMOTE et RandomUnderSampler pour optimiser le resampling.
-        
-        Retourne :
-        - pipeline : Pipeline optimisé avec SMOTE et RandomUnderSampler.
+        Configures a pipeline with SMOTE and RandomUnderSampler to optimize resampling.
+
+        Returns:
+        - pipeline: Optimized pipeline with SMOTE and RandomUnderSampler.
         """
-        print(f"Configuration du pipeline avec SMOTE={self.smote_strategy_optimise} et UNDER={self.under_strategy_optimise}")
-        steps = [('smote', SMOTE(sampling_strategy=self.smote_strategy_optimise, random_state=42))]
-        steps.append(('under_sampler', RandomUnderSampler(sampling_strategy=self.under_strategy_optimise, random_state=42)))
-        steps.append(('model', DecisionTreeClassifier(random_state=42)))
+        print(f"Configuring optimized pipeline with SMOTE={self.smote_strategy_optimise} and UNDER={self.under_strategy_optimise}")
+        steps = [('smote', SMOTE(sampling_strategy=self.smote_strategy_optimise, random_state=42)),
+                 ('under_sampler', RandomUnderSampler(sampling_strategy=self.under_strategy_optimise, random_state=42)),
+                 ('model', DecisionTreeClassifier(random_state=42))]
         return ImPipeline(steps)
-    
+
     def configure_pipeline_with_best_strategies(self, smote_strategy, under_strategy):
         """
-        Configure un pipeline avec les meilleures stratégies trouvées pour SMOTE et RandomUnderSampler.
-        
-        Paramètres :
-        - smote_strategy : Stratégie SMOTE optimale.
-        - under_strategy : Stratégie RandomUnderSampler optimale.
-        
-        Retourne :
-        - pipeline : Pipeline configuré avec les meilleures stratégies.
+        Configures a pipeline with the best found strategies for SMOTE and RandomUnderSampler.
+
+        Parameters:
+        - smote_strategy: Optimal SMOTE strategy.
+        - under_strategy: Optimal RandomUnderSampler strategy.
+
+        Returns:
+        - pipeline: Pipeline configured with the best strategies.
         """
-        print(f"Configuration du pipeline avec SMOTE={smote_strategy} et UNDER={under_strategy}")
+        print(f"Configuring pipeline with SMOTE={smote_strategy} and UNDER={under_strategy}")
         steps = [('smote', SMOTE(sampling_strategy=smote_strategy, random_state=42)),
                  ('under_sampler', RandomUnderSampler(sampling_strategy=under_strategy, random_state=42)),
                  ('model', DecisionTreeClassifier(random_state=42))]
         return ImPipeline(steps)
 
+
 class ModelEvaluator:
     """
-    Classe responsable de l'évaluation des modèles.
+    Class responsible for evaluating models.
     """
     def __init__(self, pipeline, X_train, y_train):
         self.pipeline = pipeline
@@ -119,21 +124,22 @@ class ModelEvaluator:
 
     def evaluate_model(self):
         """
-        Évalue le modèle en utilisant une validation croisée stratifiée et retourne le score moyen ROC AUC.
-        
-        Retourne :
-        - mean_score : Score moyen ROC AUC.
+        Evaluates the model using stratified cross-validation and returns the average ROC AUC score.
+
+        Returns:
+        - mean_score: Average ROC AUC score.
         """
-        print("Évaluation du modèle")
+        print("Evaluating the model")
         cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
         scores = cross_val_score(self.pipeline, self.X_train, self.y_train, scoring='roc_auc', cv=cv, n_jobs=1)
         mean_score = np.mean(scores)
-        print(f"Score moyen ROC AUC: {mean_score}")
+        print(f"Average ROC AUC Score: {mean_score}")
         return mean_score
+
 
 class DataSaver:
     """
-    Classe responsable de la sauvegarde des données traitées.
+    Class responsible for saving processed data.
     """
     def __init__(self, base_filename, directory_path):
         self.base_filename = base_filename
@@ -141,37 +147,38 @@ class DataSaver:
 
     def save_data(self, X_train, X_test, y_train, y_test, suffix):
         """
-        Sauvegarde les données d'entraînement et de test dans des fichiers CSV.
-        
-        Paramètres :
-        - X_train : Features d'entraînement.
-        - X_test : Features de test.
-        - y_train : Labels d'entraînement.
-        - y_test : Labels de test.
-        - suffix : Suffixe à ajouter aux noms de fichiers.
+        Saves training and test data to CSV files.
+
+        Parameters:
+        - X_train: Training features.
+        - X_test: Test features.
+        - y_train: Training labels.
+        - y_test: Test labels.
+        - suffix: Suffix to add to file names.
         """
-        print(f"Début de la sauvegarde pour {self.base_filename} avec suffixe {suffix}")
+        print(f"Starting to save data for {self.base_filename} with suffix {suffix}")
         train_path = f"{self.directory_path}/4_train_ON_OFF/X_train_{self.base_filename}_{suffix}.csv"
         train_label_path = f"{self.directory_path}/4_train_ON_OFF/y_train_{self.base_filename}_{suffix}.csv"
         test_path = f"{self.directory_path}/5_test_ON_OFF/X_test_{self.base_filename}_{suffix}.csv"
         test_label_path = f"{self.directory_path}/5_test_ON_OFF/y_test_{self.base_filename}_{suffix}.csv"
-        
+
         os.makedirs(os.path.dirname(train_path), exist_ok=True)
         os.makedirs(os.path.dirname(test_path), exist_ok=True)
-        
+
         pd.DataFrame(X_train).to_csv(train_path, index=False, header=True)
-        print(f"Données d'entraînement sauvegardées : {train_path}")
+        print(f"Training data saved: {train_path}")
         pd.Series(y_train).to_csv(train_label_path, index=False, header=True)
-        print(f"Étiquettes d'entraînement sauvegardées : {train_label_path}")
+        print(f"Training labels saved: {train_label_path}")
         pd.DataFrame(X_test).to_csv(test_path, index=False, header=True)
-        print(f"Données de test sauvegardées : {test_path}")
+        print(f"Test data saved: {test_path}")
         pd.Series(y_test).to_csv(test_label_path, index=False, header=True)
-        print(f"Étiquettes de test sauvegardées : {test_label_path}")
-        print(f"Fin de la sauvegarde pour {self.base_filename} avec suffixe {suffix}\n")
+        print(f"Test labels saved: {test_label_path}")
+        print(f"Data saving complete for {self.base_filename} with suffix {suffix}\n")
+
 
 class FileProcessor:
     """
-    Classe responsable du traitement des fichiers individuels.
+    Class responsible for processing individual files.
     """
     def __init__(self, filepath):
         self.filepath = filepath
@@ -180,73 +187,76 @@ class FileProcessor:
 
     def process_file_over(self, save_directory, save_best_combinations_filepath):
         """
-        Traite un fichier en utilisant la stratégie de suréchantillonnage SMOTE.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données traitées.
-        
-        Retourne :
-        - result_over : Dictionnaire contenant les résultats du traitement.
+        Processes a file using the SMOTE oversampling strategy.
+
+        Parameters:
+        - save_directory: Directory to save processed data.
+
+        Returns:
+        - result_over: Dictionary containing the processing results.
         """
+        print(f"Processing file {self.filepath} with oversampling")
         X, y = self.loader.load_and_prepare_data()
         resampler = ResamplingPipeline(X, y)
         pipeline = resampler.configure_pipeline_over()
         evaluator = ModelEvaluator(pipeline, resampler.X_train, resampler.y_train)
         mean_score = evaluator.evaluate_model()
         pipeline.fit(resampler.X_train, resampler.y_train)
-        X_resampled, y_resampled = pipeline.steps[0][1].fit_resample(resampler.X_train, resampler.y_train) # Suréchantillonnage des données
+        X_resampled, y_resampled = pipeline.steps[0][1].fit_resample(resampler.X_train, resampler.y_train)
         saver = DataSaver(self.base_filename, save_directory)
-        saver.save_data(X_resampled, resampler.X_test, y_resampled, resampler.y_test, "over100")
+        saver.save_data(X_resampled, resampler.X_test, y_resampled, resampler.y_test, "over")
         result_over = {
             'File': self.filepath,
             'SMOTE Strategy': 1,
             'ROC AUC Score': mean_score,
             'Note': 'Resampling applied' if 1 != 'None' else 'No resampling due to class 1 >= class 0'
         }
-        
-        # Sauvegarder les résultats de la VC avec SMOTE  = 1 dans un fichier CSV
+
+        # Save the results of cross-validation with SMOTE = 1 in a CSV file
         results_df_over = pd.DataFrame([result_over])
         if not os.path.isfile(save_best_combinations_filepath):
             results_df_over.to_csv(save_best_combinations_filepath, index=False)
         else:
             results_df_over.to_csv(save_best_combinations_filepath, index=False)
-        
+
+        print(f"File {self.filepath} processed with oversampling")
         return result_over
 
     def process_file_optimise(self, save_directory, save_best_combinations_filepath):
         """
-        Traite un fichier en optimisant les stratégies SMOTE et RandomUnderSampler.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données traitées.
-        
-        Retourne :
-        - result_optimise : Dictionnaire contenant les résultats du traitement.
+        Processes a file by optimizing SMOTE and RandomUnderSampler strategies.
+
+        Parameters:
+        - save_directory: Directory to save processed data.
+
+        Returns:
+        - result_optimise: Dictionary containing the processing results.
         """
+        print(f"Processing file {self.filepath} with optimized resampling")
         X, y = self.loader.load_and_prepare_data()
         resampler = ResamplingPipeline(X, y)
         best_score = 0
         best_smote = None
         best_under = None
-        for smote_strategy in resampler.smote_strategy_optimise: # Pour chaque stratégie SMOTE
-            for under_strategy in resampler.under_strategy_optimise: # Pour chaque stratégie RandomUnderSampler
+        for smote_strategy in resampler.smote_strategy_optimise:
+            for under_strategy in resampler.under_strategy_optimise:
                 try:
-                    pipeline = resampler.configure_pipeline_with_best_strategies(smote_strategy, under_strategy) # Configuration du pipeline avec les stratégies actuelles
+                    pipeline = resampler.configure_pipeline_with_best_strategies(smote_strategy, under_strategy)
                     evaluator = ModelEvaluator(pipeline, resampler.X_train, resampler.y_train)
                     score = evaluator.evaluate_model()
-                    
-                    if score > best_score: 
+
+                    if score > best_score:
                         best_score = score
                         best_smote = smote_strategy
                         best_under = under_strategy
-                        
+
                 except Exception as e:
                     error_message = "Ratio impossible" if "The specified ratio" in str(e) else str(e)
-                    print(f"Erreur lors du traitement : {error_message}")
-                        
+                    print(f"Error during processing: {error_message}")
+
         if best_smote and best_under:
             pipeline = resampler.configure_pipeline_with_best_strategies(best_smote, best_under)
-            X_resampled, y_resampled = pipeline.steps[0][1].fit_resample(resampler.X_train, resampler.y_train) # Resampling des données avec les meilleures stratégies
+            X_resampled, y_resampled = pipeline.steps[0][1].fit_resample(resampler.X_train, resampler.y_train)
             resampler.X_train, resampler.y_train = X_resampled, y_resampled
         saver = DataSaver(self.base_filename, save_directory)
         saver.save_data(resampler.X_train, resampler.X_test, resampler.y_train, resampler.y_test, "optimise")
@@ -257,67 +267,80 @@ class FileProcessor:
             'ROC AUC Score': best_score,
             'Note': 'Resampling applied'
         }
-        # Sauvegarder les résultats des meilleures combinaisons dans un fichier CSV
+        # Save the results of the best combinations in a CSV file
         results_df_optimise = pd.DataFrame([result_optimise])
         if not os.path.isfile(save_best_combinations_filepath):
             results_df_optimise.to_csv(save_best_combinations_filepath, index=False)
         else:
             results_df_optimise.to_csv(save_best_combinations_filepath, index=False)
+        print(f"File {self.filepath} processed with optimized resampling")
         return result_optimise
 
     def save_raw_data_splits(self, save_directory):
         """
-        Sauvegarde les données brutes après standardisation et division en ensembles d'entraînement et de test.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données brutes.
+        Saves raw data after standardization and splitting into training and test sets.
+
+        Parameters:
+        - save_directory: Directory to save raw data.
         """
+        print(f"Saving raw data splits for {self.filepath}")
         X, y = self.loader.load_and_prepare_data()
         resampler = ResamplingPipeline(X, y)
         saver = DataSaver(self.base_filename, save_directory)
-        saver.save_data(resampler.X_train, resampler.X_test, resampler.y_train, resampler.y_test, "brut")
-        
-        
-        
-        
-        
-        
-        
+        saver.save_data(resampler.X_train, resampler.X_test, resampler.y_train, resampler.y_test, "raw")
+        print(f"Raw data splits saved for {self.filepath}")
+
+
 class FeatureRankingProcessor:
+    """
+    Class responsible for applying ReliefF for feature ranking.
+    """
     def __init__(self, train_folder, output_folder):
         self.train_folder = train_folder
         self.output_folder = output_folder
 
-    def set_random_seed(self, seed):
+    def set_random_seed(self, seed): # set the seed for the random number generator to ensure reproducibility of relief F
         np.random.seed(seed)
         random.seed(seed)
 
     def load_train_data(self, data_type):
+        """
+        Loads training data from the specified folder.
+
+        Parameters:
+        - data_type: Type of data to load (e.g., 'raw', 'processed').
+
+        Returns:
+        - data_dict: Dictionary containing the training data.
+        """
         data_dict = {}
-        print(f"Chargement des données de type '{data_type}' depuis le dossier : {self.train_folder}")
-        
+        print(f"Loading '{data_type}' training data from folder: {self.train_folder}")
+
         for file in os.listdir(self.train_folder):
             file_path = os.path.join(self.train_folder, file)
             if file.endswith(f'_{data_type}.csv'):
-                identifier = file.split(f'_{data_type}.csv')[0].replace('X_train_', '').replace('y_train_', '')
+                identifier = file.split(f'_{data_type}.csv')[0].replace('X_train_', '').replace('y_train_', '') 
                 if identifier not in data_dict:
                     data_dict[identifier] = {}
                 if 'X_train' in file:
-                    print(f"Chargement du fichier X_train pour l'identifiant : {identifier}")
-                    #data_dict[identifier]['X_train'] = pd.read_csv(file_path)
-                    data_dict[identifier]['X_train'] = pd.read_csv(file_path).head(10)  # Load only the first 10 rows
-                    
+                    print(f"Loading X_train for identifier: {identifier}")
+                    data_dict[identifier]['X_train'] = pd.read_csv(file_path)
                 elif 'y_train' in file:
-                    print(f"Chargement du fichier y_train pour l'identifiant : {identifier}")
-                    #data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze()
-                    data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze().head(10)  # Load only the first 10 rows
+                    print(f"Loading y_train for identifier: {identifier}")
+                    data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze()
 
-
-        print(f"Données chargées pour les identifiants : {list(data_dict.keys())}")
+        print(f"Data loaded for identifiers: {list(data_dict.keys())}")
         return data_dict
 
-    def apply_relief(self, data_type='brut', random_seed=42):
-        print(f"\nDébut de l'application de ReliefF sur les données de type '{data_type}'")
+    def apply_relief(self, data_type='raw', random_seed=42):
+        """
+        Applies ReliefF for feature ranking.
+
+        Parameters:
+        - data_type: Type of data to process.
+        - random_seed: Seed for random number generator.
+        """
+        print(f"\nStarting ReliefF application on '{data_type}' data")
         self.set_random_seed(random_seed)
         data_dict = self.load_train_data(data_type)
 
@@ -325,14 +348,14 @@ class FeatureRankingProcessor:
             X = data['X_train']
             y = data['y_train']
 
-            print(f"\nTraitement du dataset : {key}")
+            print(f"\nProcessing dataset: {key}")
             start_time = time.time()
 
-            print("Application de ReliefF...")
+            print("Applying ReliefF...")
             relief = ReliefF()
             relief.fit(X.values, y.values)
 
-            feature_importances = relief.feature_importances_
+            feature_importances = relief.feature_importances_ # importances scores of features
             feature_names = X.columns.tolist()
 
             features_importance = pd.DataFrame({
@@ -343,108 +366,69 @@ class FeatureRankingProcessor:
             features_importance_sorted = features_importance.sort_values(by='Score', ascending=False)
 
             os.makedirs(self.output_folder, exist_ok=True)
-            output_file = os.path.join(self.output_folder, f'{key}_classement_relief_{data_type}.csv')
+            output_file = os.path.join(self.output_folder, f'{key}_feature_ranking_relief_{data_type}.csv')
             features_importance_sorted.to_csv(output_file, index=False)
 
             stop_time = time.time()
             total_time = stop_time - start_time
-            print(f"Temps d'execution de ReliefF pour {key} ({data_type}) = {total_time:.2f} secondes")
-            print(f"Importances des features pour {key} ({data_type}) sauvegardées dans : {output_file}")
+            print(f"ReliefF execution time for {key} ({data_type}) = {total_time:.2f} seconds")
+            print(f"Feature importances for {key} ({data_type}) saved to: {output_file}")
 
-        
 
 class DirectoryProcessor:
     """
-    Classe responsable du traitement de tous les fichiers dans un répertoire.
+    Class responsible for processing all files in a directory.
     """
     def __init__(self, directory_path):
         self.directory_path = directory_path
 
     def process_directory_over(self, save_directory, results_filepath):
         """
-        Traite tous les fichiers dans le répertoire en utilisant la stratégie de suréchantillonnage SMOTE.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données traitées.
-        - results_filepath : Chemin du fichier CSV pour sauvegarder les résultats.
+        Processes all files in the directory using the SMOTE oversampling strategy.
+
+        Parameters:
+        - save_directory: Directory to save processed data.
+        - results_filepath: File path to save the results.
         """
         results_df_over = pd.DataFrame()
         files = [f for f in os.listdir(self.directory_path) if f.endswith(".csv")]
-        for filename in tqdm(files, desc="Traitement des fichiers (over)"):
+        for filename in tqdm(files, desc="Processing files (over)"):
             filepath = os.path.join(self.directory_path, filename)
-            processor = FileProcessor(filepath) 
-            result_over = processor.process_file_over(save_directory) # Traitement du fichier avec suréchantillonnage
-            results_df_over = pd.concat([results_df_over, pd.DataFrame([result_over])], ignore_index=True) # Ajout des résultats de chaque fichier au DataFrame
-            print(f"Ajout des résultats pour {filename} au DataFrame.")
+            processor = FileProcessor(filepath)
+            result_over = processor.process_file_over(save_directory, results_filepath)
+            results_df_over = pd.concat([results_df_over, pd.DataFrame([result_over])], ignore_index=True)
+            print(f"Added results for {filename} to DataFrame.")
         results_df_over.to_csv(results_filepath, index=False)
-        print(f"Résultats sauvegardés dans {results_filepath}.")
+        print(f"Results saved to {results_filepath}.")
 
     def process_directory_optimise(self, save_directory, results_filepath):
         """
-        Traite tous les fichiers dans le répertoire en optimisant les stratégies SMOTE et RandomUnderSampler.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données traitées.
-        - results_filepath : Chemin du fichier CSV pour sauvegarder les résultats.
+        Processes all files in the directory by optimizing SMOTE and RandomUnderSampler strategies.
+
+        Parameters:
+        - save_directory: Directory to save processed data.
+        - results_filepath: File path to save the results.
         """
         results_df_optimise = pd.DataFrame()
         files = [f for f in os.listdir(self.directory_path) if f.endswith(".csv")]
-        for filename in tqdm(files, desc="Traitement des fichiers (optimise)"):
+        for filename in tqdm(files, desc="Processing files (optimise)"):
             filepath = os.path.join(self.directory_path, filename)
             processor = FileProcessor(filepath)
-            result_optimise = processor.process_file_optimise(save_directory)
-            results_df_optimise = pd.concat([results_df_optimise, pd.DataFrame([result_optimise])], ignore_index=True) # Ajout des résultats de chaque fichier au DataFrame
-            print(f"Ajout des résultats pour {filename} avec SMOTE {result_optimise['SMOTE Strategy']} et UNDER {result_optimise['Under Strategy']} au DataFrame.") 
+            result_optimise = processor.process_file_optimise(save_directory, results_filepath)
+            results_df_optimise = pd.concat([results_df_optimise, pd.DataFrame([result_optimise])], ignore_index=True)
+            print(f"Added results for {filename} with SMOTE {result_optimise['SMOTE Strategy']} and UNDER {result_optimise['Under Strategy']} to DataFrame.")
         results_df_optimise.to_csv(results_filepath, index=False)
-        print(f"Résultats sauvegardés dans {results_filepath}.")
+        print(f"Results saved to {results_filepath}.")
 
     def process_directory_raw(self, save_directory):
         """
-        Sauvegarde les données brutes pour tous les fichiers dans le répertoire.
-        
-        Paramètres :
-        - save_directory : Répertoire où sauvegarder les données brutes.
+        Saves raw data for all files in the directory.
+
+        Parameters:
+        - save_directory: Directory to save raw data.
         """
-        files = [f for f in os.listdir(self.directory_path) if f.endswith(".csv")] # Liste des fichiers CSV dans le répertoire
-        for filename in tqdm(files, desc="Traitement des fichiers (raw)"): # Pour chaque fichier
+        files = [f for f in os.listdir(self.directory_path) if f.endswith(".csv")]
+        for filename in tqdm(files, desc="Processing files (raw)"):
             filepath = os.path.join(self.directory_path, filename)
             processor = FileProcessor(filepath)
             processor.save_raw_data_splits(save_directory)
-
-
-
-######## Traitement par répertoire ########
-# Début du chronométrage pour le suréchantillonnage
-# start_time_over = time.time()
-
-# Chemin vers le répertoire des données
-#directory_path = 'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient/'
-
-# Processus de suréchantillonnage pour chaque fichier dans le répertoire
-# processor_over = DirectoryProcessor(directory_path)
-# processor_over.process_directory_over("C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient_final_over100_test", # chemin de sauvegarde des données suréchantillonnées
-#                                       'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/resultats_resampling_by_patient/best_combinations_over100_test.csv')
-
-# # Fin du chronométrage pour le suréchantillonnage
-# end_time_over = time.time()
-# total_time_over = end_time_over - start_time_over
-# print(f"Temps d'exécution total pour le suréchantillonnage: {total_time_over:.2f} seconds")
-
-# Début du chronométrage pour le resampling optimisé
-# start_time_optimise = time.time()
-
-# # Processus de resampling optimisé pour chaque fichier dans le répertoire
-# processor_optimise = DirectoryProcessor(directory_path)
-# processor_optimise.process_directory_optimise("C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/all_features_by_patient_final_optimise_test", # chemin de sauvegarde des données optimisées
-#                                               'C:/Users/antho/Documents/MEMOIRE_M2/c3d_audeline/resultats_resampling_by_patient/best_combinations_optimize_test.csv')
-
-# # Fin du chronométrage pour le resampling optimisé
-# end_time_optimise = time.time()
-# total_time_optimise = end_time_optimise - start_time_optimise
-# print(f"Temps d'exécution total pour le resampling optimisé: {total_time_optimise:.2f} seconds")
-
-# Sauvegarde des données brutes pour chaque fichier dans le répertoire
-# processor_raw = DirectoryProcessor(directory_path)
-# processor_raw.process_directory_raw("D:/detectFog/data/all_features_by_patient_final_data_brute")
-
-

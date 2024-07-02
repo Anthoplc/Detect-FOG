@@ -168,10 +168,13 @@ def process_patient(root_directory, statistics_directory, top_n_values, methods)
     for method in methods:
         processor = FileProcessor(combined_file_path)
         if method == 'over':
+            print("Processing file with over-sampling method...")
             processor.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over.csv'))
         elif method == 'optimise':
+            print("Processing file with optimisation method...")
             processor.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimise.csv'))
         elif method == 'raw':
+            print("Processing file with raw data...")
             processor.save_raw_data_splits(root_directory)
 
     # Step 6 : Ranking features
