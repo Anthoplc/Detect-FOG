@@ -167,23 +167,24 @@ def process_patient(root_directory, statistics_directory, top_n_values, methods)
     combined_file_path = os.path.join(combined_directory, f'{patient_id}_all_extraction_ON_OFF.csv')
     for method in methods:
         processor = FileProcessor(combined_file_path)
-        if method == 'over100':
-            processor.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over100.csv'))
+        if method == 'over':
+            processor.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over.csv'))
         elif method == 'optimise':
             processor.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimise.csv'))
-        elif method == 'brut':
+        elif method == 'raw':
             processor.save_raw_data_splits(root_directory)
 
     # Step 6 : Ranking features
     train_folder = os.path.join(root_directory, '4_train_ON_OFF')
-    output_folder_top_features = os.path.join(root_directory, '6_classement_features_ON_OFF')
+    output_folder_top_features = os.path.join(root_directory, '6_feature_ranking_ON_OFF')
     feature_ranking_processor = FeatureRankingProcessor(train_folder, output_folder_top_features)
     for method in methods:
         feature_ranking_processor.apply_relief(data_type=method)
 
     # Step 7: Training and evaluating machine learning models
     test_folder = os.path.join(root_directory, '5_test_ON_OFF')
-    output_folder = os.path.join(root_directory, '7_resultats_machine_learning')
+    output_folder = os.path.join(root_directory, '7_results_machine_learning')
+    os.makedirs(output_folder, exist_ok=True)
     model_trainer = ModelTraining(train_folder, test_folder, output_folder_top_features, output_folder)
     for method in methods:
         train_data = model_trainer.load_train(method)
@@ -211,8 +212,9 @@ if __name__ == "__main__":
                                 'C:/Users/antho/Documents/MEMOIRE_M2/A_P_1956_02_21']
     
     # Define the resample methods to use, include the select_features
-    methods = ['brut']
-    # methods = ['over100','optimise','brut']
+    methods = ['over','optimise']
+
+    # methods = ['raw', 'over', 'optimise']
 
     # Define top_n values from Relief F to include in Machine Learning models.
     top_n_values = [10, 20]

@@ -1,9 +1,9 @@
 import os
 import pandas as pd
+from collections import defaultdict
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-from collections import defaultdict
 import time
 
 class ModelTraining:
@@ -12,7 +12,7 @@ class ModelTraining:
         self.test_folder = test_folder
         self.top_feature_relief_folder = top_feature_relief_folder
         self.output_folder = output_folder
-        print(f"ModelTraining instance created with train_folder: {train_folder}, test_folder: {test_folder}, top_feature_relief_folder: {top_feature_relief_folder}, output_folder: {output_folder}")
+        print(f"\n ModelTraining instance created with train_folder: {train_folder}, test_folder: {test_folder}, top_feature_relief_folder: {top_feature_relief_folder}, output_folder: {output_folder}\n")
 
     def load_train(self, method):
         data_dict = {}
@@ -22,7 +22,6 @@ class ModelTraining:
             if file.startswith('X_train') or file.startswith('y_train'):
                 if f'_{method}.csv' in file:
                     identifier = file.split(f'_{method}.csv')[0].replace('X_train_', '').replace('y_train_', '')
-                    # Split identifier to keep only the desired part
                     identifier = identifier.split('_all_extraction_ON_OFF')[0]
                     if identifier not in data_dict:
                         data_dict[identifier] = {}
@@ -32,6 +31,7 @@ class ModelTraining:
                     elif 'y_train' in file:
                         data_dict[identifier]['y_train'] = pd.read_csv(file_path).squeeze()
                         print(f"Loaded y_train for identifier: {identifier}")
+        print(f"Training data loaded with identifiers: {list(data_dict.keys())}")
         return data_dict
 
     def load_test(self, method):
@@ -42,7 +42,6 @@ class ModelTraining:
             if file.startswith('X_test') or file.startswith('y_test'):
                 if f'_{method}.csv' in file:
                     identifier = file.split(f'_{method}.csv')[0].replace('X_test_', '').replace('y_test_', '')
-                    # Split identifier to keep only the desired part
                     identifier = identifier.split('_all_extraction_ON_OFF')[0]
                     if identifier not in data_dict:
                         data_dict[identifier] = {}
@@ -52,7 +51,20 @@ class ModelTraining:
                     elif 'y_test' in file:
                         data_dict[identifier]['y_test'] = pd.read_csv(file_path).squeeze()
                         print(f"Loaded y_test for identifier: {identifier}")
+        print(f"Test data loaded with identifiers: {list(data_dict.keys())}")
         return data_dict
+
+    def load_feature_importances(self, method):
+        print(f"Loading feature importances with method: {method}")
+        feature_importances = {}
+        for file in os.listdir(self.top_feature_relief_folder):
+            if file.endswith(f'_all_extraction_ON_OFF_feature_ranking_relief_{method}.csv'):
+                file_path = os.path.join(self.top_feature_relief_folder, file)
+                identifier = file.split(f'_all_extraction_ON_OFF_feature_ranking_relief_{method}')[0]
+                feature_importances[identifier] = pd.read_csv(file_path)
+                print(f"Loaded feature importances for identifier: {identifier}")
+        print(f"Feature importances loaded with identifiers: {list(feature_importances.keys())}")
+        return dict(feature_importances)
 
     def group_data(self, data_dicts):
         print("Grouping data")
@@ -63,20 +75,9 @@ class ModelTraining:
         print("Data grouped")
         return dict(grouped_data)
 
-    def load_feature_importances(self, method):
-        print(f"Loading feature importances with method: {method}")
-        feature_importances = {}
-        for file in os.listdir(self.top_feature_relief_folder):
-            if file.endswith(f'all_extraction_ON_OFF_classement_relief_{method}.csv'):
-                file_path = os.path.join(self.top_feature_relief_folder, file)
-                identifier = file.split(f'_all_extraction_ON_OFF_classement_relief_{method}')[0]
-                feature_importances[identifier] = pd.read_csv(file_path)
-                print(f"Loaded feature importances for identifier: {identifier}_")
-        return dict(feature_importances)
-
     def select_features(self, feature_importances, X, top_n=10):
         top_features = feature_importances['Feature'].head(top_n).tolist()
-        print(f"Selected top {top_n} features")
+        print(f"Selected top {top_n} features: {top_features}")
         return X[top_features]
 
     def calculate_distribution(self, y):
@@ -84,15 +85,29 @@ class ModelTraining:
         print(f"Calculated distribution: {distribution}")
         return distribution
 
-    def train_models(self, data_dict, feature_importances, top_n_values, method='brut'):
+    def train_models(self, data_dict, feature_importances, top_n_values, method='raw'):
         print(f"Training models with top_n_values: {top_n_values} and method: {method}")
         results = []
         for top_n in top_n_values:
             for identifier, data in data_dict.items():
                 print(f"Training with identifier: {identifier} and top_n: {top_n}")
-                X_train = self.select_features(feature_importances[identifier], data['X_train'], top_n)
+
+                print(f"For train data")
+                try:
+                    X_train = self.select_features(feature_importances[identifier], data['X_train'], top_n)
+                except KeyError as e:
+                    print(f"Error: Identifier '{identifier}' not found in feature importances.")
+                    continue
+
                 y_train = data['y_train']
-                X_test = self.select_features(feature_importances[identifier], data['X_test'], top_n)
+                
+                print(f"For test data")
+                try:
+                    X_test = self.select_features(feature_importances[identifier], data['X_test'], top_n)
+                except KeyError as e:
+                    print(f"Error: Identifier '{identifier}' not found in feature importances.")
+                    continue
+                
                 y_test = data['y_test']
 
                 models = {
@@ -158,24 +173,18 @@ class ModelTraining:
                     # Sauvegarde des résultats pour chaque modèle et patient
                     results_df = pd.DataFrame([result])
                     output_path = os.path.join(self.output_folder, f'{identifier}_{model_name}_{method}.csv')
-                    results_df.to_csv(output_path, index=False)
-                    print(f"Saved results to {output_path}")
+                    if not os.path.exists(output_path):
+                        results_df.to_csv(output_path, index=False)
+                    else:
+                        results_df.to_csv(output_path, mode='a', header=False, index=False)
+                    print(f"Saved results to {output_path}\n")
 
         return results
 
 # Exemple d'utilisation :
-train_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/train_ON_OFF"
-test_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/test_ON_OFF"
-importances_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/classement_features_ON_OFF"
-output_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/resultats_machine_learning"
-method = 'brut'
-top_n_values = [10, 20, 30]
+# train_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/4_train_ON_OFF"
+# test_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/5_test_ON_OFF"
+# importances_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01/6_classement_features_ON_OFF"
+# output_folder = "C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01"
 
-model_trainer = ModelTraining(train_folder, test_folder, importances_folder, output_folder)
 
-train_data = model_trainer.load_train(method)
-test_data = model_trainer.load_test(method)
-grouped_data = model_trainer.group_data([train_data, test_data])
-feature_importances = model_trainer.load_feature_importances(method)
-
-results = model_trainer.train_models(grouped_data, feature_importances, top_n_values, method)
