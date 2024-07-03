@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import argparse
 from preprocessing import PreProcessing, Statistics, ExtractionFeatures
 from rebalancing_and_select_features import FileProcessor, FeatureRankingProcessor
 from machine_learning import ModelTraining
@@ -209,27 +210,83 @@ def process_patients(patients_directories, statistics_directory, top_n_values, m
     for patient_directory in patients_directories:
         process_patient(patient_directory, statistics_directory, top_n_values, methods)
 
+def main():
+    parser = argparse.ArgumentParser(description="Process C3D files for multiple patients.")
+    
+    parser.add_argument(
+        '--patients_directories',
+        nargs='+',
+        required=True,
+        help="List of directories for the patients to process."
+    )
+    parser.add_argument(
+        '--statistics_directory',
+        required=True,
+        help="Directory where statistics will be stored."
+    )
+    parser.add_argument(
+        '--top_n_values',
+        nargs='+',
+        type=int,
+        required=True,
+        help="List of top N values for main features to consider."
+    )
+    parser.add_argument(
+        '--methods',
+        nargs='+',
+        required=True,
+        choices=['raw', 'over', 'optimise'],
+        help="List of feature extraction methods to use."
+    )
+
+    args = parser.parse_args()
+    
+    process_patients(
+        args.patients_directories,
+        args.statistics_directory,
+        args.top_n_values,
+        args.methods
+    )
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ############################################################################################################
 # def run_process(patients_directories, statistics_directory, top_n_values, methods):
 #     process_patients(patients_directories, statistics_directory, top_n_values, methods)
 ############################################################################################################
     
-if __name__ == "__main__":
-    # Define directories for new patients to process
-    new_patients_directories = ['C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01',
-                                'C:/Users/antho/Documents/MEMOIRE_M2/A_P_1956_02_21']
+# if __name__ == "__main__":
+#     # Define directories for new patients to process
+#     new_patients_directories = ['C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01',
+#                                 'C:/Users/antho/Documents/MEMOIRE_M2/A_P_1956_02_21']
     
-    # Define the resample methods to use, include the select_features
-    methods = ['over','optimise']
+#     # Define the resample methods to use, include the select_features
+#     methods = ['over','optimise']
 
-    # methods = ['raw', 'over', 'optimise']
+#     # methods = ['raw', 'over', 'optimise']
 
-    # Define top_n values from Relief F to include in Machine Learning models.
-    top_n_values = [10, 20]
+#     # Define top_n values from Relief F to include in Machine Learning models.
+#     top_n_values = [10, 20]
 
-    # Define directory where statistics will be stored
-    statistics_directory = 'C:/Users/antho/Documents/MEMOIRE_M2/statistiques_audeline/'
+#     # Define directory where statistics will be stored
+#     statistics_directory = 'C:/Users/antho/Documents/MEMOIRE_M2/statistiques_audeline/'
 
-    # Process specified patients
-    process_patients(new_patients_directories, statistics_directory, top_n_values, methods)
+#     # Process specified patients
+#     process_patients(new_patients_directories, statistics_directory, top_n_values, methods)
