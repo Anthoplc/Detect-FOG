@@ -171,10 +171,10 @@ def process_patient(root_directory, statistics_directory, top_n_values, methods)
             print("Processing file with over-sampling method...")
             processor.process_file_over(root_directory, os.path.join(root_directory, 'best_combinations_over.csv'))
         elif method == 'optimise':
-            print("Processing file with optimisation method...")
+            print("\n Processing file with optimisation method...")
             processor.process_file_optimise(root_directory, os.path.join(root_directory, 'best_combinations_optimise.csv'))
         elif method == 'raw':
-            print("Processing file with raw data...")
+            print("\n Processing file with raw data...")
             processor.save_raw_data_splits(root_directory)
 
     # Step 6 : Ranking features
@@ -209,6 +209,12 @@ def process_patients(patients_directories, statistics_directory, top_n_values, m
     for patient_directory in patients_directories:
         process_patient(patient_directory, statistics_directory, top_n_values, methods)
 
+
+############################################################################################################
+# def run_process(patients_directories, statistics_directory, top_n_values, methods):
+#     process_patients(patients_directories, statistics_directory, top_n_values, methods)
+############################################################################################################
+    
 if __name__ == "__main__":
     # Define directories for new patients to process
     new_patients_directories = ['C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01',

@@ -1,23 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.signal import resample, butter, lfilter, freqz
+from scipy.signal import resample, butter, lfilter
 import ezc3d
 from scipy.stats import mode, median_abs_deviation, iqr, trim_mean, entropy as ent, skew, kurtosis
-from scipy.signal import welch, correlate, stft
-from statsmodels.tsa.ar_model import AutoReg
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import TimeSeriesSplit
 from scipy.fft import fft, fftfreq
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.pipeline import Pipeline
-import os
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.tree import DecisionTreeClassifier
-from numpy import mean
+# from scipy.signal import welch, correlate, stft
+# from statsmodels.tsa.ar_model import AutoReg
+# from sklearn.metrics import mean_squared_error
+# from sklearn.model_selection import TimeSeriesSplit
+
 
 class PreProcessing:
     def __init__(self, file_path):
