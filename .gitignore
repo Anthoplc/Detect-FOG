@@ -1,5 +1,12 @@
 /.venv
-code/Machine_Learning.ipynb
+code/class_extraction_features.py
+code/class_machine_learning.py
+code/class_reequilibrage_and_select_feature.py
+code/extraction_frequences.ipynb
+code/feature_extraction.ipynb
+code/filtre_caract.py
 code/Preprocessing.ipynb
-code/Test.ipynb
+code/Reequlibrage_spyder_with_multisurf.py
+code/Reequlibrage_spyder.py
 code/relief_f.ipynb
+code/statistiques_audeline.ipynb
