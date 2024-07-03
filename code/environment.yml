@@ -1,0 +1,17 @@
+name: detect_fog
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
+  - ezc3d
+  - statsmodels
+  - scikit-learn
+  - imbalanced-learn
+  - pip
+  - pip:
+    - skrebate
+    - tqdm
