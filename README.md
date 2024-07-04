@@ -36,7 +36,8 @@
     └── statistics/
 
 ## Exécution du script main.py
-    python /chemin/vers/main.py 
+    cd chemin/vers/main.py
+    python main.py 
     --patients_directories "/chemin/vers/root_directory1" "/chemin/vers/root_directory2" 
     --statistics_directory "/chemin/vers/statistics_directory" 
     --top_n_values 10 20 
