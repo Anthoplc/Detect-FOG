@@ -19,20 +19,20 @@
     │   └── machine_learning.py
     │
     └── data/
-    ├── patient_1/
-    │   ├── 1_OFF/
-    │   │   └── c3d/
-    │   │       └── fichiers_c3d_off
-    │   ├── 2_ON/
-    │       └── c3d/
-    │           └── fichiers_c3d_on
-    └── patient_2/
-        ├── 1_OFF/
-        │   └── c3d/
-        │       └── fichiers_c3d_off
-        ├── 2_ON/
-            └── c3d/
-                └── fichiers_c3d_on
+    |    ├── patient_1/
+    |    │   ├── 1_OFF/
+    |    │   │   └── c3d/
+    |    │   │       └── fichiers_c3d_off
+    |    │   ├── 2_ON/
+    |    │       └── c3d/
+    |    │           └── fichiers_c3d_on
+    |    └── patient_2/
+    |        ├── 1_OFF/
+    |        │   └── c3d/
+    |        │       └── fichiers_c3d_off
+    |        ├── 2_ON/
+    |            └── c3d/
+    |                └── fichiers_c3d_on
     └── statistics/
 
 ## Exécution du script main.py
