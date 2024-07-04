@@ -1,7 +1,65 @@
 
 # Installation 
 
-    #!/bin/bash
+    #cloner le dépôt 
+    conda env create -f environment.yml
+    conda activate detect_fog
+
+# Structure des répertoires
+
+    votre_projet/
+    │
+    ├── code/
+    │   ├── main.py
+    │   ├── environment.yml
+    │   ├── preprocessing.py
+    │   ├── rebalancing_and_select_features.py
+    │   └── machine_learning.py
+    │
+    └── data/
+    ├── patient_1/
+    │   ├── 1_OFF/
+    │   │   └── c3d/
+    │   │       └── fichiers_c3d_off
+    │   ├── 2_ON/
+    │       └── c3d/
+    │           └── fichiers_c3d_on
+    └── patient_2/
+        ├── 1_OFF/
+        │   └── c3d/
+        │       └── fichiers_c3d_off
+        ├── 2_ON/
+            └── c3d/
+                └── fichiers_c3d_on
+    └── statistics/
+
+# Exécution du du fichier exécutant l'algorithme 
+    cd code
+    python main.py --patients_directories ../data/patient_1 ../data/patient_2 \
+               --statistics_directory ../statistics \
+               --top_n_values 10 20 \
+               --methods raw over optimise
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
     # Chemin du fichier environment.yml (à modifier selon votre configuration)
     ENV_FILE_PATH="path/to/environment.yml"
