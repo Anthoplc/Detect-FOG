@@ -37,12 +37,11 @@
 
 ## Exécution du script main.py
     cd chemin/vers/main.py
-    python main.py 
-    --patients_directories "/chemin/vers/root_directory1" "/chemin/vers/root_directory2" 
-    --statistics_directory "/chemin/vers/statistics_directory" 
-    --top_n_values 10 20 
-    --methods raw over optimise
+    python main.py --patients_directories "chemin/vers/patient_1" "chemin/vers/autre_patient --statistics_directory "chemin/vers/statistics" --top_n_values 10 20 --methods raw over optimise
 
+    #vous pouvez choisir d'intéger autant de top_n_values que vous désirez
+    #vous pouvez choisir d'utiliser uniquement une method ou deux ou trois
+    
 # I. Introduction
 ## Objectifs du projet
 Le projet vise à développer des systèmes de détection des épisodes de Freezing of Gait (FOG) chez les patients atteints de la maladie de Parkinson en utilisant des données issues de centrales inertielles. Plus précisément, les objectifs sont :
