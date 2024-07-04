@@ -1,8 +1,9 @@
 
 # Installation 
 
+    # Aller dans l'indice de commande anacondaPrompt
     #cloner le dépôt 
-    conda env create -f environment.yml
+    conda env create -f chemin d'accès/environment.yml
     conda activate detect_fog
 
 # Structure des répertoires
@@ -33,14 +34,12 @@
                 └── fichiers_c3d_on
     └── statistics/
 
-# Exécution du du fichier exécutant l'algorithme 
-    cd code
-    python main.py --patients_directories ../data/patient_1 ../data/patient_2 \
-               --statistics_directory ../statistics \
-               --top_n_values 10 20 \
-               --methods raw over optimise
-
-
+# Exécution du script main.py
+    python main.py 
+    --patients_directories "/chemin/vers/root_directory1" "/chemin/vers/root_directory2" 
+    --statistics_directory "/chemin/vers/statistics_directory" 
+    --top_n_values 10 20 
+    --methods raw over optimise
 
 
 
