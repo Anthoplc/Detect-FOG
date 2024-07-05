@@ -271,7 +271,7 @@ if __name__ == "__main__":
 #     top_n_values = [10, 20]
 
 #     # Define directory where statistics will be stored
-#     statistics_directory = 'C:/Users/antho/Documents/MEMOIRE_M2/statistiques_audeline/'
+#     statistics_directory = 'path/statistiques/'
 
 #     # Process specified patients
 #     process_patients(new_patients_directories, statistics_directory, top_n_values, methods)
