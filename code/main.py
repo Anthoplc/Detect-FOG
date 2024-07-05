@@ -259,8 +259,8 @@ if __name__ == "__main__":
     
 # if __name__ == "__main__":
 #     # Define directories for new patients to process
-#     new_patients_directories = ['C:/Users/antho/Documents/MEMOIRE_M2/P_P_1963-04-01',
-#                                 'C:/Users/antho/Documents/MEMOIRE_M2/A_P_1956_02_21']
+#     new_patients_directories = ['path/patient_1,
+#                                 'path/patient_2']
     
 #     # Define the resample methods to use, include the select_features
 #     methods = ['over','optimise']
