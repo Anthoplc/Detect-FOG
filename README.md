@@ -1,15 +1,15 @@
 
 # 0. Installation 
 
-## Création environnement 
-    # Aller dans l'indice de commande anacondaPrompt
-    #cloner le dépôt 
-    conda env create -f chemin d'accès/environment.yml
+## Creating Environment
+    # Go to the Anaconda Prompt command line
+    # Clone the repository
+    conda env create -f path/to/environment.yml
     conda activate detect_fog
 
-## Structure des répertoires
+## Directory Structure
 
-    votre_projet/
+    your_project/
     │
     ├── code/
     │   ├── main.py
@@ -19,126 +19,133 @@
     │   └── machine_learning.py
     │
     └── data/
-    |    ├── patient_1/
+    |    ├── P_1_1900-00-00/
     |    │   ├── 1_OFF/
     |    │   │   └── c3d/
-    |    │   │       └── fichiers_c3d_off
+    |    │   │       └── c3d_off_files
     |    │   ├── 2_ON/
     |    │       └── c3d/
-    |    │           └── fichiers_c3d_on
-    |    └── patient_2/
+    |    │           └── c3d_on_files
+    |    └── P_2_1900-00-00/
     |        ├── 1_OFF/
     |        │   └── c3d/
-    |        │       └── fichiers_c3d_off
+    |        │       └── c3d_off_files
     |        ├── 2_ON/
     |            └── c3d/
-    |                └── fichiers_c3d_on
+    |                └── c3d_on_files
     └── statistics/
 
-## Exécution du script main.py
-    cd chemin/vers/main.py
-    python main.py --patients_directories "chemin/vers/patient_1" "chemin/vers/autre_patient --statistics_directory "chemin/vers/statistics" --top_n_values 10 20 --methods raw over optimise
+    !!!!!! WARNING: It is important that the names of the patient files are written as above. !!!!!
 
-    #vous pouvez choisir d'intéger autant de top_n_values que vous désirez
-    #vous pouvez choisir d'utiliser uniquement une method ou deux ou trois
+## TO DO LIST
+- It is important that each c3d contains a START and END event.
+- Check the labelling of events in the c3d, there must be no succession of debut_fog or fin_fog and there must be no two events with exactly the same time.
+- !!!!!! WARNING: It is important that the names of the patient directory are written as above (P_1_1900-00-00). !!!!!
+  
+
+## Running the main.py script
+    cd path/to/main.py
+    python main.py --patients_directories "path/to/patient_1" "path/to/another_patient" --statistics_directory "path/to/statistics" --top_n_values 10 20 --methods raw over optimise
+
+    # You can choose to include as many top_n_values as you want
+    # You can choose to use only one method or two or three
     
 # I. Introduction
-## Objectifs du projet
-Le projet vise à développer des systèmes de détection des épisodes de Freezing of Gait (FOG) chez les patients atteints de la maladie de Parkinson en utilisant des données issues de centrales inertielles. Plus précisément, les objectifs sont :
+## Project objectives
+The aim of the project is to develop systems for detecting episodes of Freezing of Gait (FOG) in patients suffering from Parkinson's disease using data from inertial units. More specifically, the objectives are :
 
-### 1. Individualisation des Algorithmes
-Créer des algorithmes individualisés pour chaque patient afin de déterminer s'il y a une différence de performance par rapport à des algorithmes globaux intégrant les données de plusieurs patients.
+### 1. individualisation of algorithms
+To create individualised algorithms for each patient in order to determine whether there is a difference in performance compared with global algorithms integrating data from several patients.
 
-### 2. Rééquilibrage des Données
-Montrer que le rééquilibrage des données permet d'améliorer les performances des modèles en traitant le déséquilibre entre les classes FOG et non-FOG, car Len général les épisodes de FOG sont généralement beaucoup moins fréquents que les périodes de marche normale, ce qui entraîne un déséquilibre des classes et vont créer des biais dans les modèles de machine learning.
+### 2. Data rebalancing
+Demonstrate that data rebalancing can improve model performance by addressing the imbalance between FOG and non-FOG classes, as FOG episodes are generally much less frequent than periods of normal walking, which leads to class imbalance and will create biases in machine learning models.
 
-### 3. Diversité des FOG
-Démontrer qu'il existe une diversité des épisodes de FOG entre les patients, impliquant des caractéristiques différentes à implémenter dans les modèles pour chaque patient, ce qui permet d'améliorer la performance des algorithmes.
+### 3. FOG diversity
+Demonstrate that there is a diversity of FOG episodes between patients, implying different features to be implemented in the models for each patient, which will improve the performance of the algorithms.
 
+# II. General context
+The data is collected from C3D files containing information on movements captured by sensors placed on the patients. Each patient is equipped with 7 sensors (pelvis, thighs, shins and feet). Data from the three axes (X, Y, Z) of the gyroscope and accelerometer are retrieved during 18 runs (6 blocks of 3 conditions: simple task, motor task, cognitive task) promoting the FOG over two visits (ON: with full medication and OFF: without medication). 
 
-# II. Contexte général
-Les données sont collectées à partir de fichiers C3D contenant des informations sur les mouvements capturés par des capteurs placés sur les patients. Chaque patient est équipé de 7 capteurs (le pelvis, les cuisses, les tibias et les pieds. Les données provenant des trois axes (X, Y, Z) du gyroscope et de l'accéléromètre sont récupérées lors de 18 passages (6 blocs de 3 conditions : tâche simple, tâche motrice, tâche cognitive) favorisant le FOG sur deux visites (ON : avec pleine médication et OFF : sans médication). 
+# III. Data preprocessing (preprocessing.py file)
 
-# III. Prétraitement des Données (fichier preprocessing.py)
+## 1. Description of C3D files and data
+The C3D files contain raw data from the inertial units, from which we will extract the various FOG, path and movement events, etc., which we will store in the 1.OFF and 2.ON directories.
 
-## 1. Description des fichiers C3D et des données
-Les fichiers C3D contiennent des données brutes provenant des centrales inertiels dans lesquelles, nous allons extraire les différents événements de FOG, de parcours, de mouvement, etc. qu'on va stocker dans le _**répertoire 1.OFF et 2.ON**_
-
-  Fonctions associées :
+  Associated functions :
 - [recuperer_evenements](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L56)
 
 
-## 2. Méthodes de filtrage et de rééchantillonnage
-Les données sont rééchantillonnées à une fréquence cible de 50 Hz et un filtre passe-bas de Butterworth est appliqué pour éliminer les bruits haute fréquence. Cela permet de rendre les données plus lisses et d'améliorer la qualité des caractéristiques extraites.
+## 2. Filtering and resampling methods
+The data is resampled to a target frequency of 50 Hz and a Butterworth low-pass filter is applied to remove high-frequency noise. This makes the data smoother and improves the quality of the extracted features.
 
-  Fonction associées :
+  Associated functions :
 - [butter_lowpass](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L71)
 - [butter_lowpass_filter](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L88)
 - [reechantillonnage_fc_coupure_et_association_labels_et_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L105)
 
 
-## 3. Normalisation des données
-Les données sont normalisées pour garantir que toutes les variables sont sur la même échelle. Nous avons également placé des START et END sur chaque c3d, afin d'élminer la phase assise du patient. Et nous avons également ajouter la norme provenant des 3 axes pour le gyroscopre et l'accéléromètre
+## 3. Data normalisation
+The data is normalized to ensure that all variables are on the same scale. We've also placed START and END on each c3d, to identify the patient's sitting phase. And we've also added the 3-axis norm for the gyro and accelerometer.
 
-  Fonctions associées : 
+  Associated functions :
 - [calcul_norme](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L159)
 - [normalize_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L395)
 
-A la suite de ces 3 parties, nous avons créer une fonction json, permettant de réunir toutes les informations du patients, des événements de FOG, des données associées à chaque capteurs et chaque axe (X,Y,Z,norme) : [creation_json_grace_c3d](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L187)
+Following these 3 parts, we have created a json function to gather all the information about the patient, the FOG events, the data associated with each sensor and each axis (X,Y,Z,norm): [creation_json_grace_c3d](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L187)
 
-## 4. Segmentation des données en fenêtres
-Les données sont segmentées en fenêtres temporelles de 2 secondes avec un décalage de 0,2 seconde entre chaque fenêtre. Les étiquettes créées sont FOG, transitionFOG, transitionNoFog, NoFOG. 
+## 4. Segmentation of data into windows
+The data is segmented into 2 second time windows with an offset of 0.2 seconds between each window. The labels created are FOG, transitionFOG, transitionNoFog, NoFOG. 
 
-  Fonctions associées :
+  Associated functions :
   - [decoupage_en_fenetres](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L422)
   - [label_fenetre](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L501)
   - [association_label_fenetre_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L558)
   - [concat_label_fenetre_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L591)
 
-## 5. Extraction des Caractéristiques
-Des caractéristiques dans le domaine temporel et fréquentiel sont extraites pour chaque fenêtres, capteurs et axes.
+## 5. Characteristic extraction
+Time and frequency domain characteristics are extracted for each window, sensor and axis.
 
-  Fonctions associées :
+  Associated functions :
 - [dataframe_caracteristiques_final](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L1071)
 
-## 6. Création d'un fichier statistiques
-Nous avons également créer une class Statistics qui nous permets de récupérer le temps de FOG, le temps de l'enregistrement et le pourcentage de FOG par rapport au temps pour chaque c3d.
+## 6. Creating a statistics file
+We have also created a Statistics class which allows us to retrieve the FOG time, the recording time and the percentage of FOG in relation to time for each c3d.
 
-  Fonctions associées :
+  Associated functions :
 - [stats](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/preprocessing.py#L669)
 
-# IV. Rééquilibrage des données (fichier rebalancing_and_select_features.py)
-Pour toute la suite de notre algorithme nous avons regroupé les étiquettes transition-FOG et FOG en classe FOG (classe =1) et les étiquettes non-FOG en classe Non-FOG (classe = 0) et nous avons supprimé les étiquettes transition-non-FOG. [load_and_prepare_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L23)
+# IV. Rebalancing the data (rebalancing_and_select_features.py file)
+For the rest of our algorithm, we have grouped the transition-FOG and FOG labels in class FOG (class =1) and the non-FOG labels in class Non-FOG (class = 0) and we have removed the transition-non-FOG labels. [load_and_prepare_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L23)
 
-Etant donné que dans la littérature, nous rencontrons souvent des problèmes de déséquiblibre de classes, nous avons choisi de comparer deux méthodes de rééquilibrages par rapport à aucun rééquilibrage.
+Given that in the literature we often encounter problems of class imbalance, we have chosen to compare two rebalancing methods against no rebalancing.
 
-## 1. Sur-échantillonnage (SMOTE)
-Le Synthetic Minority Over-sampling Technique (SMOTE) est utilisé pour générer des exemples synthétiques de la classe minoritaire, afin de traiter le déséquilibre des classes dans les données et présenter des classes totalement équilibrées.
+## 1. Oversampling (SMOTE)
+The Synthetic Minority Over-sampling Technique (SMOTE) is used to generate synthetic examples of the minority class, in order to address class imbalance in the data and present fully balanced classes.
 
-  Fonctions associées :
+  Associated functions :
 - [configure_pipeline_over](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L73)
 - [process_file_over](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L188)
 
-## 2. Echantillonnage optimisé
-Nous avons appliqué une méthode utilisant SMOTE et du sous-échantillonnage, afin de trouver l'équilibre qui permettrait d'afficher le meilleurs rééquilibrage et ainsi limité le nombre de données créées et se rapprocher de la réalité. Pour cela, nous avons tester plusieurs pourcentage de sur et sous échantillonnage pour sélectionner grâce à la validation croisée le meilleur score AUC correspondant à la meilleure combinaison de pourcentage.
+## 2. Optimised sampling
+We applied a method using SMOTE and sub-sampling, in order to find the balance that would display the best rebalancing and thus limit the number of data items created and get closer to reality. To do this, we tested several over- and under-sampling percentages to select, using cross-validation, the best AUC score corresponding to the best combination of percentages.
 
-  Fonctions associées :
+  Associated functions :
 - [configure_pipeline_optimise](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L85)
 - [configure_pipeline_with_best_strategies](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L98)
 - [evaluate_model](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L125)
 - [process_file_optimise](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L225)
 
-## 3. Echantillonnage brute
-Afin de pouvoir comparer l'efficacité des méthodes de rééquilibrage, nous avons également conservé l'équilibrage brute.
+## 3. Raw sampling
+In order to be able to compare the effectiveness of the rebalancing methods, we have also retained the raw balancing.
 
-  Fonctions associées :
+  Associated functions :
 - [save_raw_data_splits](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L279)
 
-# V. Sélection des caractéristiques (fichier rebalancing_and_select_features.py)
+# V. Feature selection (rebalancing_and_select_features.py file)
 
-L'algorithme ReliefF est utilisé uniquement sur les données d'entrainement (70%) brutes, sur-échantillonné et optimisé pour évaluer l'importance des caractéristiques et sélectionner les plus pertinentes pour la détection des épisodes de FOG en fonction des méthodes de rééquilibre. Cela permet de réduire la dimensionnalité des données et de se concentrer sur les caractéristiques les plus significatives​​ et d'observer si la sélection varie en fonction des méthodes de rééquilibrage.
+The ReliefF algorithm is used only on the raw (70%) training data, oversampled and optimised to assess the importance of features and select the most relevant for the detection of FOG episodes based on the rebalancing methods. This makes it possible to reduce the dimensionality of the data and focus on the most significant features and to observe whether the selection varies according to the rebalancing methods.
 
-  Fonctions associées :
+  Associated functions :
 - [load_train_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L306)
 - [apply_relief](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L335)
 - [process_file_over](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L188)
@@ -146,22 +153,22 @@ L'algorithme ReliefF est utilisé uniquement sur les données d'entrainement (70
 - [save_raw_data_splits](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L279)
 
 
-# VI. Formation et Évaluation des Modèles de Machine Learning (fichier machine_learning.py)
+# VI. Training and Evaluation of Machine Learning Models (machine_learning.py file)
 
-## 1. Chargement et préparation des données
-Les données d'entraînement et de test sont chargées et préparées en utilisant les caractéristiques sélectionnées par ReliefF.
+## 1 Data loading and preparation
+Training and test data are loaded and prepared using the features selected by ReliefF.
 
-  Fonctions associées :
+  Associated functions :
 - [load_train](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/machine_learning.py#L26)
 - [load_test](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/machine_learning.py#L73)
 - [load_feature_importances](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/machine_learning.py#L119)
 - [select_features](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/machine_learning.py#L174)
 
-## 2. Entraînement des modèles
-Les modèles de machine learning, tels que RandomForestClassifier, sont entraînés sur les données d'entraînement et évalués à l'aide de validation croisée. Chaque modèle est évalué individuellement pour chaque patient.
+## 2. Model training
+Machine learning models, such as RandomForestClassifier, are trained on the training data and evaluated using cross-validation. Each model is evaluated individually for each patient.
 
-  Fonctions associées :
+  Associated functions :
 - [train_models](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/machine_learning.py#L210)
 
-## 3. Évaluation des modèles
-Les performances des modèles sont évaluées à l'aide de métriques telles que l'aire sous la courbe ROC (AUC), la sensibilité, la spécificité. Cela permet de mesurer la capacité des modèles à détecter les épisodes de FOG de manière précise et fiable​​.
+## 3. Model evaluation
+Model performance is assessed using metrics such as the area under the ROC curve (AUC), sensitivity and specificity. This measures the models' ability to detect FOG episodes accurately and reliably.
