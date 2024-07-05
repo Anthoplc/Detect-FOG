@@ -40,7 +40,6 @@
 ## TO DO LIST
 - It is important that each c3d contains a START and END event.
 - Check the labelling of events in the c3d, there must be no succession of debut_fog or fin_fog and there must be no two events with exactly the same time.
-- !!!!!! WARNING: It is important that the names of the patient directory are written as above (P_1_1900-00-00). !!!!!
   
 
 ## Running the main.py script
