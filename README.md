@@ -9,8 +9,6 @@
 
 ## Directory Structure
 
-## Directory Structure
-
     your_project/
     │
     ├── code/
@@ -21,14 +19,14 @@
     │   └── machine_learning.py
     │
     └── data/
-    |    ├── patient_1/
+    |    ├── P_1_1900-00-00/
     |    │   ├── 1_OFF/
     |    │   │   └── c3d/
     |    │   │       └── c3d_off_files
     |    │   ├── 2_ON/
     |    │       └── c3d/
     |    │           └── c3d_on_files
-    |    └── patient_2/
+    |    └── P_2_1900-00-00/
     |        ├── 1_OFF/
     |        │   └── c3d/
     |        │       └── c3d_off_files
@@ -36,6 +34,14 @@
     |            └── c3d/
     |                └── c3d_on_files
     └── statistics/
+
+    !!!!!! WARNING: It is important that the names of the patient files are written as above. !!!!!
+
+## TO DO LIST
+- It is important that each c3d contains a START and END event.
+- Check the labelling of events in the c3d, there must be no succession of debut_fog or fin_fog and there must be no two events with exactly the same time.
+- !!!!!! WARNING: It is important that the names of the patient directory are written as above (P_1_1900-00-00). !!!!!
+  
 
 ## Running the main.py script
     cd path/to/main.py
