@@ -1,41 +1,47 @@
 
-# Installation 
+# 0. Installation 
 
-    #!/bin/bash
+## Création environnement 
+    # Aller dans l'indice de commande anacondaPrompt
+    #cloner le dépôt 
+    conda env create -f chemin d'accès/environment.yml
+    conda activate detect_fog
 
-    # Chemin du fichier environment.yml (à modifier selon votre configuration)
-    ENV_FILE_PATH="path/to/environment.yml"
+## Structure des répertoires
 
-    # Chemin du fichier patient et des stats (à modifier selon votre configuration)
-    PATIENT_FILE_PATH="path/to/patient/file"
-    STATS_FILE_PATH="path/to/stats/file"
+    votre_projet/
+    │
+    ├── code/
+    │   ├── main.py
+    │   ├── environment.yml
+    │   ├── preprocessing.py
+    │   ├── rebalancing_and_select_features.py
+    │   └── machine_learning.py
+    │
+    └── data/
+    |    ├── patient_1/
+    |    │   ├── 1_OFF/
+    |    │   │   └── c3d/
+    |    │   │       └── fichiers_c3d_off
+    |    │   ├── 2_ON/
+    |    │       └── c3d/
+    |    │           └── fichiers_c3d_on
+    |    └── patient_2/
+    |        ├── 1_OFF/
+    |        │   └── c3d/
+    |        │       └── fichiers_c3d_off
+    |        ├── 2_ON/
+    |            └── c3d/
+    |                └── fichiers_c3d_on
+    └── statistics/
 
-    # Nom de l'environnement conda (à modifier selon votre préférence)
-    ENV_NAME="detect_fog_env"
+## Exécution du script main.py
+    cd chemin/vers/main.py
+    python main.py --patients_directories "chemin/vers/patient_1" "chemin/vers/autre_patient --statistics_directory "chemin/vers/statistics" --top_n_values 10 20 --methods raw over optimise
 
-    # Installer l'environnement conda à partir du fichier yml
-    echo "Installation de l'environnement conda depuis $ENV_FILE_PATH..."
-    conda env create -f $ENV_FILE_PATH
-
-    # Activer l'environnement conda
-    echo "Activation de l'environnement $ENV_NAME..."
-    conda activate $ENV_NAME
-
-    # Modifier les chemins d'accès dans le fichier main.py
-    echo "Modification des chemins d'accès dans main.py..."
-    sed -i "s|PATH_TO_PATIENT_FILE|$PATIENT_FILE_PATH|g" main.py
-    sed -i "s|PATH_TO_STATS_FILE|$STATS_FILE_PATH|g" main.py
-
-    # Se placer dans le répertoire contenant main.py (à modifier selon votre configuration)
-    MAIN_DIR="path/to/main.py/directory"
-    cd $MAIN_DIR
-
-    # Lancer le fichier main.py
-    echo "Lancement de main.py..."
-    python main.py
-
+    #vous pouvez choisir d'intéger autant de top_n_values que vous désirez
+    #vous pouvez choisir d'utiliser uniquement une method ou deux ou trois
     
-
 # I. Introduction
 ## Objectifs du projet
 Le projet vise à développer des systèmes de détection des épisodes de Freezing of Gait (FOG) chez les patients atteints de la maladie de Parkinson en utilisant des données issues de centrales inertielles. Plus précisément, les objectifs sont :
