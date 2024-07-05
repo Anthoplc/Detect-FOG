@@ -142,7 +142,7 @@ In order to be able to compare the effectiveness of the rebalancing methods, we 
 
 # V. Feature selection (rebalancing_and_select_features.py file)
 
-The ReliefF algorithm is used only on the raw (70%) training data, oversampled and optimised to assess the importance of features and select the most relevant for the detection of FOG episodes based on the rebalancing methods. This makes it possible to reduce the dimensionality of the data and focus on the most significant features and to observe whether the selection varies according to the rebalancing methods.
+The ReliefF algorithm is used only on training data (70%) of each methods (raw, oversampled and optimised) to assess the importance of features and select the most relevant for the detection of FOG episodes based on the rebalancing methods. This makes it possible to reduce the dimensionality of the data and focus on the most significant features and to observe whether the selection varies according to the rebalancing methods.
 
   Associated functions :
 - [load_train_data](https://github.com/Anthoplc/Detect-FOG/blob/674be32f6b65143bb53ccc18b7cf0e8b94f00846/code/rebalancing_and_select_features.py#L306)
